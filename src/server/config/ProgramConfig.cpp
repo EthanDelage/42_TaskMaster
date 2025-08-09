@@ -1,5 +1,6 @@
 #include "server/config/ProgramConfig.hpp"
 
+#include <cctype>
 #include <csignal>
 #include <iostream>
 #include <stdexcept>
@@ -69,7 +70,7 @@ bool ProgramConfig::get_autostart() const {
   return _autostart;
 }
 
-bool ProgramConfig::get_autorestart() const {
+AutoRestart ProgramConfig::get_autorestart() const {
   return _autorestart;
 }
 
@@ -167,13 +168,25 @@ void ProgramConfig::parse_umask(YAML::Node config_node) {
 
 void ProgramConfig::parse_autostart(YAML::Node config_node) {
   _autostart = config_node["autostart"] ?
-    config_node["autostart"].as<bool>() : 0;
+    config_node["autostart"].as<bool>() : false;
 }
 
 void ProgramConfig::parse_autorestart(YAML::Node config_node) {
-  _autorestart = config_node["autorestart"] ?
-    config_node["autorestart"].as<bool>() : 0;
-  // TODO: handle unexpected
+  if (!config_node["autorestart"]) {
+    _autorestart = AutoRestart::False;
+    return;
+  }
+  std::string value = config_node["autorestart"].as<std::string>();
+  std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+  if (value == "true") {
+    _autorestart = AutoRestart::True;
+  } else if (value == "false") {
+    _autorestart = AutoRestart::False;
+  } else if (value == "unexpected") {
+    _autorestart = AutoRestart::Unexpected;
+  } else {
+    throw std::runtime_error("ProgramConfig: Invalid autorestart value (" + value + ")");
+  }
 }
 
 void ProgramConfig::parse_env(YAML::Node config_node) {
@@ -201,7 +214,13 @@ void ProgramConfig::print() const {
   std::cout << "  Umask: " << std::oct << _umask << std::dec << "\n";
   std::cout << "  Working Dir: " << _workingdir << "\n";
   std::cout << "  Autostart: " << (_autostart ? "true" : "false") << "\n";
-  std::cout << "  Autorestart: " << (_autorestart ? "true" : "false") << "\n";
+  if (_autorestart == AutoRestart::True) {
+    std::cout << "  Autorestart: true" << "\n";
+  } else if (_autorestart == AutoRestart::False) {
+    std::cout << "  Autorestart: false" << "\n";
+  } else if (_autorestart == AutoRestart::Unexpected) {
+    std::cout << "  Autorestart: unexpected" << "\n";
+  }
   std::cout << "  Start Retries: " << _startretries << "\n";
   std::cout << "  Start Time: " << _starttime << "\n";
   std::cout << "  Stop Signal: " << _stopsignal << "\n";

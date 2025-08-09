@@ -5,6 +5,12 @@
 #include <vector>
 #include <yaml-cpp/yaml.h>
 
+enum class AutoRestart {
+  True,
+  False,
+  Unexpected
+};
+
 class ProgramConfig {
 public:
   explicit ProgramConfig(const std::string name, const YAML::Node config_node);
@@ -21,7 +27,7 @@ public:
   unsigned long             get_stoptime() const;
   unsigned long             get_umask() const;
   bool                      get_autostart() const;
-  bool                      get_autorestart() const;
+  AutoRestart               get_autorestart() const;
   std::vector<std::string>  get_env() const;
   std::vector<int>          get_exitcodes() const;
 
@@ -48,14 +54,14 @@ private:
   std::string               _workingdir;
   std::string               _stdout;
   std::string               _stderr;
-  int                     _stopsignal;
+  int                       _stopsignal;
   unsigned long             _numprocs;
   unsigned long             _starttime;
   unsigned long             _startretries;
   unsigned long             _stoptime;
   unsigned long             _umask;
   bool                      _autostart;
-  bool                      _autorestart;
+  AutoRestart               _autorestart;
   std::vector<std::string>  _env;
   std::vector<int>          _exitcodes;
 };
