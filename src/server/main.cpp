@@ -1,4 +1,4 @@
-#include <server/Config.hpp>
+#include <server/config/Config.hpp>
 
 int main(int argc, char **argv) {
     (void)argc;

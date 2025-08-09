@@ -1,6 +1,7 @@
 add_executable(server
         main.cpp
-        Config.cpp
+        config/Config.cpp
+        config/ProgramConfig.cpp
 )
 
 include(FetchContent)
