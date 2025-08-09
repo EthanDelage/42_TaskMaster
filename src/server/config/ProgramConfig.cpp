@@ -41,7 +41,7 @@ std::string ProgramConfig::get_stderr() const {
   return _stderr;
 }
 
-std::string ProgramConfig::get_stopsignal() const {
+int ProgramConfig::get_stopsignal() const {
   return _stopsignal;
 }
 
@@ -105,9 +105,39 @@ void ProgramConfig::parse_stderr(YAML::Node config_node) {
   }
 }
 
+
 void ProgramConfig::parse_stopsignal(YAML::Node config_node) {
-  _stopsignal = config_node["stopsignal"] ?
-    config_node["stopsignal"].as<std::string>() : "SIGINT";
+  if (!config_node["stopsignal"]) {
+    _stopsignal = SIGSTOP;
+  }
+  std::string signal_string = config_node["stopsignal"].as<std::string>();
+  static const std::unordered_map<std::string, int> signal_table = {
+    {"HUP", SIGHUP},
+    {"INT", SIGINT},
+    {"QUIT", SIGQUIT},
+    {"ILL", SIGILL},
+    {"ABRT", SIGABRT},
+    {"FPE", SIGFPE},
+    {"KILL", SIGKILL},
+    {"SEGV", SIGSEGV},
+    {"PIPE", SIGPIPE},
+    {"ALRM", SIGALRM},
+    {"TERM", SIGTERM},
+    {"USR1", SIGUSR1},
+    {"USR2", SIGUSR2},
+    {"CHLD", SIGCHLD},
+    {"CONT", SIGCONT},
+    {"STOP", SIGSTOP},
+    {"TSTP", SIGTSTP},
+    {"TTIN", SIGTTIN},
+    {"TTOU", SIGTTOU}
+  };
+
+  auto it = signal_table.find(signal_string);
+  if (it == signal_table.end()) {
+    throw std::runtime_error("ProgramConfig: Invalid stopsignal value (" + signal_string + ")");
+  }
+  _stopsignal = it->second;
 }
 
 void ProgramConfig::parse_numprocs(YAML::Node config_node) {

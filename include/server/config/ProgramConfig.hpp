@@ -14,7 +14,7 @@ public:
   std::string               get_workingdir() const;
   std::string               get_stdout() const;
   std::string               get_stderr() const;
-  std::string               get_stopsignal() const;
+  int                       get_stopsignal() const;
   unsigned long             get_numprocs() const;
   unsigned long             get_starttime() const;
   unsigned long             get_startretries() const;
@@ -48,7 +48,7 @@ private:
   std::string               _workingdir;
   std::string               _stdout;
   std::string               _stderr;
-  std::string               _stopsignal;
+  int                     _stopsignal;
   unsigned long             _numprocs;
   unsigned long             _starttime;
   unsigned long             _startretries;

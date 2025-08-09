@@ -1,7 +1,6 @@
 #include "server/config/Config.hpp"
 
 #include <yaml-cpp/yaml.h>
-#include <iostream>
 
 Config::Config(const std::string &filename) {
   std::string program_name;
