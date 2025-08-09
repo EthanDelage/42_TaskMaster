@@ -49,6 +49,9 @@ int Process::restart(int sig) {
     return start();
 }
 
+pid_t Process::getpid() const {
+    return _pid;
+}
 
 std::string Process::get_cmd_path(const std::string& cmd) {
     if (cmd.find('/') != std::string::npos) {

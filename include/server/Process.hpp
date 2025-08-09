@@ -10,6 +10,8 @@ public:
     int start();
     int stop(int sig);
     int restart(int sig);
+
+    pid_t getpid() const;
 private:
     static std::string get_cmd_path(const std::string &cmd);
 
