@@ -4,6 +4,10 @@
 #include <csignal>
 #include <iostream>
 #include <stdexcept>
+#include <filesystem>
+
+static bool is_file_writeable(std::string path);
+static bool is_directory(std::string path);
 
 ProgramConfig::ProgramConfig(const std::string name, const YAML::Node config_node) {
   parse_cmd(config_node);
@@ -35,6 +39,7 @@ std::string ProgramConfig::get_workingdir() const {
 }
 
 std::string ProgramConfig::get_stdout() const {
+
   return _stdout;
 }
 
@@ -90,22 +95,33 @@ void ProgramConfig::parse_cmd(YAML::Node config_node) {
 }
 
 void ProgramConfig::parse_workingdir(YAML::Node config_node) {
-  _workingdir = config_node["workingdir"] ?
-    config_node["workingdir"].as<std::string>() : ".";
+  if (config_node["workingdir"]) {
+    _workingdir = config_node["workingdir"].as<std::string>();
+    if (!is_directory(_workingdir)) {
+      throw std::runtime_error("ProgramConfig: workingdir: Not a directory (" + _workingdir + ")");
+    }
+  }
 }
 
 void ProgramConfig::parse_stdout(YAML::Node config_node) {
-  if (config_node["stdout"]) {
-    _stdout = config_node["stdout"].as<std::string>();
+  if (!config_node["stdout"]) {
+    return;
+  }
+  _stdout = config_node["stdout"].as<std::string>();
+  if (!is_file_writeable(_stdout)) {
+      throw std::runtime_error("ProgramConfig: stdout: Invalid permission (" + _stdout + ")");
   }
 }
 
 void ProgramConfig::parse_stderr(YAML::Node config_node) {
-  if (config_node["stderr"]) {
-    _stderr = config_node["stderr"].as<std::string>();
+  if (!config_node["stderr"]) {
+    return;
+  }
+  _stderr = config_node["stderr"].as<std::string>();
+  if (!is_file_writeable(_stderr)) {
+      throw std::runtime_error("ProgramConfig: stderr: Invalid permission (" + _stderr + ")");
   }
 }
-
 
 void ProgramConfig::parse_stopsignal(YAML::Node config_node) {
   if (!config_node["stopsignal"]) {
@@ -240,5 +256,19 @@ void ProgramConfig::print() const {
   }
 
   std::cout << "---------------------------\n";
+}
+
+static bool is_file_writeable(std::string path) {
+  namespace fs = std::filesystem;
+
+  if (!std::filesystem::exists(path)) {
+    return true;
+  }
+  fs::perms permission = fs::status(path).permissions();
+  return (permission & fs::perms::owner_write) != fs::perms::none;
+}
+
+static bool is_directory(std::string path) {
+  return std::filesystem::is_directory(path);
 }
 
