@@ -1,5 +1,8 @@
 #include <server/config/Config.hpp>
 #include <iostream>
+#include "server/Process.hpp"
+#include <cstdlib>
+#include <sys/wait.h>
 
 int main(int argc, char **argv) {
     (void)argc;
@@ -8,5 +11,9 @@ int main(int argc, char **argv) {
     configs.parse("config.yaml");
 
     std::cout << configs;
+
+    Process ls = Process("ls");
+    ls.start();
+    wait(nullptr);
     return 0;
 }

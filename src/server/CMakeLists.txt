@@ -1,5 +1,6 @@
 add_executable(server
         main.cpp
+        Process.cpp
         config/Config.cpp
         config/ProgramConfig.cpp
 )
