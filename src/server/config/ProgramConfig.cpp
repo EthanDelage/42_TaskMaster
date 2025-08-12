@@ -158,7 +158,7 @@ void ProgramConfig::parse_exitcodes(YAML::Node config_node) {
     return;
   }
   for (const auto& entry : config_node["exitcodes"]) {
-    _exitcodes.push_back(entry.as<int>());
+    _exitcodes.push_back(entry.as<uint8_t>());
   }
 }
 
@@ -185,7 +185,7 @@ void ProgramConfig::print() const {
 
   std::cout << "  Exit Codes: ";
   for (auto code : _exitcodes) {
-    std::cout << code << " ";
+    std::cout << static_cast<int>(code) << " ";
   }
   std::cout << "\n";
 
@@ -268,7 +268,7 @@ std::vector<std::string> ProgramConfig::get_env() const {
   return _env;
 }
 
-std::vector<int> ProgramConfig::get_exitcodes() const {
+std::vector<uint8_t> ProgramConfig::get_exitcodes() const {
   return _exitcodes;
 }
 

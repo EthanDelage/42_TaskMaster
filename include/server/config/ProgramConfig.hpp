@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <cstdint>
 #include <yaml-cpp/yaml.h>
 
 enum class AutoRestart {
@@ -45,7 +46,7 @@ public:
   bool                      get_autostart() const;
   AutoRestart               get_autorestart() const;
   std::vector<std::string>  get_env() const;
-  std::vector<int>          get_exitcodes() const;
+  std::vector<uint8_t>      get_exitcodes() const;
 
 private:
   std::string               _name;
@@ -62,7 +63,7 @@ private:
   bool                      _autostart;
   AutoRestart               _autorestart;
   std::vector<std::string>  _env;
-  std::vector<int>          _exitcodes;
+  std::vector<uint8_t>      _exitcodes;
 };
 
 #endif // PROGRAM_CONFIG_HPP
