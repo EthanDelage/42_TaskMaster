@@ -14,5 +14,9 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(yaml-cpp)
 
-target_link_libraries(server PRIVATE common yaml-cpp::yaml-cpp)
+target_link_libraries(server
+  PRIVATE
+  common
+  yaml-cpp::yaml-cpp
+)
 

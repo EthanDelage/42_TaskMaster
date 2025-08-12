@@ -26,67 +26,6 @@ ProgramConfig::ProgramConfig(const std::string name, const YAML::Node config_nod
   parse_exitcodes(config_node);
 }
 
-std::string ProgramConfig::get_name() const {
-  return _name;
-}
-
-std::string ProgramConfig::get_cmd() const {
-  return _cmd;
-}
-
-std::string ProgramConfig::get_workingdir() const {
-  return _workingdir;
-}
-
-std::string ProgramConfig::get_stdout() const {
-
-  return _stdout;
-}
-
-std::string ProgramConfig::get_stderr() const {
-  return _stderr;
-}
-
-int ProgramConfig::get_stopsignal() const {
-  return _stopsignal;
-}
-
-unsigned long ProgramConfig::get_numprocs() const {
-  return _numprocs;
-}
-
-unsigned long ProgramConfig::get_starttime() const {
-  return _starttime;
-}
-
-unsigned long ProgramConfig::get_startretries() const {
-  return _startretries;
-}
-
-unsigned long ProgramConfig::get_stoptime() const {
-  return _stoptime;
-}
-
-unsigned long ProgramConfig::get_umask() const {
-  return _umask;
-}
-
-bool ProgramConfig::get_autostart() const {
-  return _autostart;
-}
-
-AutoRestart ProgramConfig::get_autorestart() const {
-  return _autorestart;
-}
-
-std::vector<std::string> ProgramConfig::get_env() const {
-  return _env;
-}
-
-std::vector<int> ProgramConfig::get_exitcodes() const {
-  return _exitcodes;
-}
-
 void ProgramConfig::parse_cmd(YAML::Node config_node) {
   if (!config_node["cmd"]) {
     throw std::runtime_error("ProgramConfig: Missing required 'cmd' field");
@@ -270,5 +209,66 @@ static bool is_file_writeable(std::string path) {
 
 static bool is_directory(std::string path) {
   return std::filesystem::is_directory(path);
+}
+
+std::string ProgramConfig::get_name() const {
+  return _name;
+}
+
+std::string ProgramConfig::get_cmd() const {
+  return _cmd;
+}
+
+std::string ProgramConfig::get_workingdir() const {
+  return _workingdir;
+}
+
+std::string ProgramConfig::get_stdout() const {
+
+  return _stdout;
+}
+
+std::string ProgramConfig::get_stderr() const {
+  return _stderr;
+}
+
+int ProgramConfig::get_stopsignal() const {
+  return _stopsignal;
+}
+
+unsigned long ProgramConfig::get_numprocs() const {
+  return _numprocs;
+}
+
+unsigned long ProgramConfig::get_starttime() const {
+  return _starttime;
+}
+
+unsigned long ProgramConfig::get_startretries() const {
+  return _startretries;
+}
+
+unsigned long ProgramConfig::get_stoptime() const {
+  return _stoptime;
+}
+
+unsigned long ProgramConfig::get_umask() const {
+  return _umask;
+}
+
+bool ProgramConfig::get_autostart() const {
+  return _autostart;
+}
+
+AutoRestart ProgramConfig::get_autorestart() const {
+  return _autorestart;
+}
+
+std::vector<std::string> ProgramConfig::get_env() const {
+  return _env;
+}
+
+std::vector<int> ProgramConfig::get_exitcodes() const {
+  return _exitcodes;
 }
 
