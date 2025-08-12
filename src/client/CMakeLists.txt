@@ -1,5 +1,6 @@
 add_executable(client
   main.cpp
+  Client.cpp
 )
 
 target_compile_options(client
