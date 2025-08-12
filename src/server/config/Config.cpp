@@ -3,7 +3,9 @@
 #include <yaml-cpp/yaml.h>
 #include <iostream>
 
-Config::Config(const std::string &filename) {
+Config::Config() {}
+
+void Config::parse(const std::string &filename) {
   std::string program_name;
   YAML::Node root = YAML::LoadFile(filename);
 
@@ -18,6 +20,10 @@ Config::Config(const std::string &filename) {
 
     _programs_config.push_back(program_config);
   }
+}
+
+void Config::clear(const std::string &filename) {
+  _programs_config.clear();
 }
 
 std::ostream& operator<<(std::ostream& os, const Config& object) {
