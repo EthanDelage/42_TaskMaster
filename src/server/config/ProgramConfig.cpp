@@ -162,41 +162,6 @@ void ProgramConfig::parse_exitcodes(YAML::Node config_node) {
   }
 }
 
-void ProgramConfig::print() const {
-  std::cout << "  Program: " << _name << "\n";
-  std::cout << "  Cmd: " << _cmd << "\n";
-  std::cout << "  NumProcs: " << _numprocs << "\n";
-  std::cout << "  Umask: " << std::oct << _umask << std::dec << "\n";
-  std::cout << "  Working Dir: " << _workingdir << "\n";
-  std::cout << "  Autostart: " << (_autostart ? "true" : "false") << "\n";
-  if (_autorestart == AutoRestart::True) {
-    std::cout << "  Autorestart: true" << "\n";
-  } else if (_autorestart == AutoRestart::False) {
-    std::cout << "  Autorestart: false" << "\n";
-  } else if (_autorestart == AutoRestart::Unexpected) {
-    std::cout << "  Autorestart: unexpected" << "\n";
-  }
-  std::cout << "  Start Retries: " << _startretries << "\n";
-  std::cout << "  Start Time: " << _starttime << "\n";
-  std::cout << "  Stop Signal: " << _stopsignal << "\n";
-  std::cout << "  Stop Time: " << _stoptime << "\n";
-  std::cout << "  Stdout File: " << _stdout << "\n";
-  std::cout << "  Stderr File: " << _stderr << "\n";
-
-  std::cout << "  Exit Codes: ";
-  for (auto code : _exitcodes) {
-    std::cout << static_cast<int>(code) << " ";
-  }
-  std::cout << "\n";
-
-  std::cout << "  Env:\n";
-  for (const auto &env_var : _env) {
-    std::cout << "    " << env_var << "\n";
-  }
-
-  std::cout << "---------------------------\n";
-}
-
 static bool is_file_writeable(std::string path) {
   namespace fs = std::filesystem;
 
@@ -209,6 +174,39 @@ static bool is_file_writeable(std::string path) {
 
 static bool is_directory(std::string path) {
   return std::filesystem::is_directory(path);
+}
+
+std::ostream& operator<<(std::ostream& os, const ProgramConfig& object) {
+  os << "  Program: " << object.get_name() << "\n";
+  os << "  Cmd: " << object.get_cmd() << "\n";
+  os << "  NumProcs: " << object.get_numprocs() << "\n";
+  os << "  Umask: " << std::oct << object.get_umask() << std::dec << "\n";
+  os << "  Working Dir: " << object.get_workingdir() << "\n";
+  os << "  Autostart: " << (object.get_autostart() ? "true" : "false") << "\n";
+  if (object.get_autorestart() == AutoRestart::True) {
+    os << "  Autorestart: true" << "\n";
+  } else if (object.get_autorestart() == AutoRestart::False) {
+    os << "  Autorestart: false" << "\n";
+  } else if (object.get_autorestart() == AutoRestart::Unexpected) {
+    os << "  Autorestart: unexpected" << "\n";
+  }
+  os << "  Start Retries: " << object.get_startretries() << "\n";
+  os << "  Start Time: " << object.get_starttime() << "\n";
+  os << "  Stop Signal: " << object.get_stopsignal() << "\n";
+  os << "  Stop Time: " << object.get_stoptime() << "\n";
+  os << "  Stdout File: " << object.get_stdout() << "\n";
+  os << "  Stderr File: " << object.get_stderr() << "\n";
+  os << "  Exit Codes: ";
+  for (auto code : object.get_exitcodes()) {
+    os << static_cast<int>(code) << " ";
+  }
+  os << "\n";
+  os << "  Env:\n";
+  for (const auto &env_var : object.get_env()) {
+    os << "    " << env_var << "\n";
+  }
+  os << "---------------------------\n";
+  return os;
 }
 
 std::string ProgramConfig::get_name() const {

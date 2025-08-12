@@ -1,6 +1,7 @@
 #include "server/config/Config.hpp"
 
 #include <yaml-cpp/yaml.h>
+#include <iostream>
 
 Config::Config(const std::string &filename) {
   std::string program_name;
@@ -19,9 +20,14 @@ Config::Config(const std::string &filename) {
   }
 }
 
-void Config::print() {
-  for (const auto &config : _programs_config) {
-    config.print();
+std::ostream& operator<<(std::ostream& os, const Config& object) {
+  for (const auto &config : object.get_programs_config()) {
+    os << config;
   }
+  return os;
+}
+
+std::vector<ProgramConfig> Config::get_programs_config() const {
+  return _programs_config;
 }
 

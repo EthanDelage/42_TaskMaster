@@ -8,10 +8,12 @@
 class Config {
 public:
   explicit Config(const std::string &filename);
-  void print();
+  std::vector<ProgramConfig> get_programs_config() const;
 private:
   std::vector<ProgramConfig> _programs_config;
 };
+
+std::ostream& operator<<(std::ostream& os, const Config& object);
 
 #endif // CONFIG_HPP
 

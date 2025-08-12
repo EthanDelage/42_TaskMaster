@@ -30,7 +30,6 @@ public:
   void parse_autorestart(YAML::Node config_node);
   void parse_env(YAML::Node config_node);
   void parse_exitcodes(YAML::Node config_node);
-  void print() const;
 
   std::string               get_name() const;
   std::string               get_cmd() const;
@@ -65,6 +64,8 @@ private:
   std::vector<std::string>  _env;
   std::vector<uint8_t>      _exitcodes;
 };
+
+std::ostream& operator<<(std::ostream& os, const ProgramConfig& object);
 
 #endif // PROGRAM_CONFIG_HPP
 
