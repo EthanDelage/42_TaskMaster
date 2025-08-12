@@ -1,5 +1,10 @@
+#include "client/Client.hpp"
+
 int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
-  return 0;
+    Client client = Client("$> ");
+
+    client.loop();
+    return 0;
 }
