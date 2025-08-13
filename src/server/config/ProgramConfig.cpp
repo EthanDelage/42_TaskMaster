@@ -9,7 +9,7 @@
 static bool is_file_writeable(std::string path);
 static bool is_directory(std::string path);
 
-ProgramConfig::ProgramConfig(const std::string name, const YAML::Node config_node) {
+ProgramConfig::ProgramConfig(std::string  name, const YAML::Node& config_node): _name(std::move(name)) {
   parse_cmd(config_node);
   parse_workingdir(config_node);
   parse_stdout(config_node);

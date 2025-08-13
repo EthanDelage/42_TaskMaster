@@ -14,7 +14,7 @@ enum class AutoRestart {
 
 class ProgramConfig {
 public:
-  explicit ProgramConfig(const std::string name, const YAML::Node config_node);
+  explicit ProgramConfig(std::string  name, const YAML::Node& config_node);
 
   void parse_cmd(YAML::Node config_node);
   void parse_workingdir(YAML::Node config_node);
