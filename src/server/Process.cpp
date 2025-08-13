@@ -4,6 +4,7 @@
 #include <iostream>
 #include <signal.h>
 #include <unistd.h>
+#include<sys/wait.h>
 
 extern char **environ; // envp
 
