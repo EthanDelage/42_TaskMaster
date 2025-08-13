@@ -9,7 +9,7 @@ class Config {
 public:
   explicit Config(const std::string& filename);
   void parse();
-  void clear(const std::string &filename);
+  void clear();
   std::vector<ProgramConfig> get_programs_config() const;
 private:
   std::string _config_path;

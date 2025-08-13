@@ -22,7 +22,7 @@ void Config::parse() {
   }
 }
 
-void Config::clear(const std::string &filename) {
+void Config::clear() {
   _programs_config.clear();
 }
 
