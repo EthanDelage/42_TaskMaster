@@ -28,11 +28,11 @@ void Client::loop() {
         if (cmd == "status") {
             status();
         } else if (cmd == "start") {
-            start(args[1]);
+            start(args);
         } else if (cmd == "stop") {
-            stop(args[1]);
+            stop(args);
         } else if (cmd == "restart") {
-            restart(args[1]);
+            restart(args);
         } else if (cmd == "reload") {
             reload();
         } else if (cmd == "help") {
@@ -47,16 +47,28 @@ void Client::status() {
     std::cout << "Status" << std::endl;
 }
 
-void Client::start(const std::string& program_name) {
-    std::cout << "Starting process: " << program_name << std::endl;
+void Client::start(const std::vector<std::string>& args) {
+    if (args.size() != 2) {
+        throw std::runtime_error("Invalid number of arguments\n"
+                                 "Usage: start <program_name>");
+    }
+    std::cout << "Starting process: " << args[1] << std::endl;
 }
 
-void Client::stop(const std::string& program_name) {
-    std::cout << "Stopping process: " << program_name << std::endl;
+void Client::stop(const std::vector<std::string>& args) {
+    if (args.size() != 2) {
+        throw std::runtime_error("Invalid number of arguments\n"
+                                 "Usage: stop <program_name>");
+    }
+    std::cout << "Stopping process: " << args[1] << std::endl;
 }
 
-void Client::restart(const std::string& program_name) {
-    std::cout << "Restarting process: " << program_name << std::endl;
+void Client::restart(const std::vector<std::string>& args) {
+    if (args.size() != 2) {
+        throw std::runtime_error("Invalid number of arguments\n"
+                                 "Usage: restart <program_name>");
+    }
+    std::cout << "Restarting process: " << args[1] << std::endl;
 }
 
 void Client::reload() {
