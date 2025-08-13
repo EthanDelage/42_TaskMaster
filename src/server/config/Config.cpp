@@ -3,11 +3,11 @@
 #include <yaml-cpp/yaml.h>
 #include <iostream>
 
-Config::Config() {}
+Config::Config(const std::string &config_path): _config_path(config_path) {}
 
-void Config::parse(const std::string &filename) {
+void Config::parse() {
   std::string program_name;
-  YAML::Node root = YAML::LoadFile(filename);
+  YAML::Node root = YAML::LoadFile(_config_path);
 
   if (!root["programs"]) {
     throw std::runtime_error("Config: Missing 'programs' section in config");

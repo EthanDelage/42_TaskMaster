@@ -7,8 +7,8 @@
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
-    Config configs;
-    configs.parse("config.yaml");
+    Config configs("config.yaml");
+    configs.parse();
 
     std::cout << configs;
 
