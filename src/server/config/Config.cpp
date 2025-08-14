@@ -3,7 +3,9 @@
 #include <yaml-cpp/yaml.h>
 #include <iostream>
 
-Config::Config(const std::string &config_path): _config_path(config_path) {}
+static bool is_valid_program_name(const std::string &name);
+
+Config::Config(std::string config_path): _config_path(std::move(config_path)) {}
 
 void Config::parse() {
   std::string program_name;
@@ -14,8 +16,8 @@ void Config::parse() {
   }
   for (const auto &program : root["programs"]) {
     program_name = program.first.as<std::string>();
-    if (Config::is_valid_program_name(program_name) == false) {
-      throw std::runtime_error("programs names must contain only letters, numbers and underscores");
+    if (is_valid_program_name(program_name) == false) {
+      throw std::runtime_error("Config: programs names must contain only letters, numbers and underscores");
     }
     YAML::Node config_node = program.second;
     // TODO: try catch
@@ -40,7 +42,7 @@ std::vector<ProgramConfig> Config::get_programs_config() const {
   return _programs_config;
 }
 
-bool Config::is_valid_program_name(const std::string &name) {
+static bool is_valid_program_name(const std::string &name) {
     if (name.empty()) {
         return false;
     }
