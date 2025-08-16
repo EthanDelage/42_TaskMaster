@@ -10,4 +10,3 @@ add_subdirectory(src/common)
 add_subdirectory(src/server)
 add_subdirectory(src/client)
 
-add_compile_options(-Wall -Werror -Wextra)

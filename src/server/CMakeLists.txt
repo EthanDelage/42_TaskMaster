@@ -15,6 +15,8 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(yaml-cpp)
 
+target_compile_options(server PRIVATE -Wall -Werror -Wextra)
+
 target_link_libraries(server
   PRIVATE
   common

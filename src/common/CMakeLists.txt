@@ -3,4 +3,6 @@ add_library(common STATIC
         split.cpp
 )
 
+target_compile_options(common PRIVATE -Wall -Werror -Wextra)
+
 target_include_directories(common PUBLIC ${CMAKE_SOURCE_DIR}/include)
