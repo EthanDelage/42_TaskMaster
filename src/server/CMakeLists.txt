@@ -1,4 +1,4 @@
-add_executable(server
+add_executable(taskmasterd
         main.cpp
         Process.cpp
         config/Config.cpp
@@ -15,7 +15,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(yaml-cpp)
 
-target_link_libraries(server
+target_link_libraries(taskmasterd
   PRIVATE
   common
   yaml-cpp::yaml-cpp
