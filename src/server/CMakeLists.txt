@@ -1,4 +1,4 @@
-add_executable(server
+add_executable(taskmasterd
         main.cpp
         Process.cpp
         Taskmaster.cpp
@@ -26,12 +26,12 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(yaml-cpp)
 
-target_compile_options(server
+target_compile_options(taskmasterd
   PRIVATE
   ${CXX_FLAGS}
 )
 
-target_link_libraries(server
+target_link_libraries(taskmasterd
   PRIVATE
   common
   yaml-cpp::yaml-cpp
