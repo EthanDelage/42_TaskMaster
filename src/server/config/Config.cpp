@@ -1,11 +1,12 @@
 #include "server/config/Config.hpp"
 
-#include <yaml-cpp/yaml.h>
 #include <iostream>
+#include <yaml-cpp/yaml.h>
 
 static bool is_valid_program_name(const std::string &name);
 
-Config::Config(std::string config_path): _config_path(std::move(config_path)) {}
+Config::Config(std::string config_path)
+    : _config_path(std::move(config_path)) {}
 
 void Config::parse() {
   std::string program_name;
@@ -17,7 +18,8 @@ void Config::parse() {
   for (const auto &program : root["programs"]) {
     program_name = program.first.as<std::string>();
     if (is_valid_program_name(program_name) == false) {
-      throw std::runtime_error("Config: programs names must contain only letters, numbers and underscores");
+      throw std::runtime_error("Config: programs names must contain only "
+                               "letters, numbers and underscores");
     }
     YAML::Node config_node = program.second;
     // TODO: try catch
@@ -27,11 +29,9 @@ void Config::parse() {
   }
 }
 
-void Config::clear() {
-  _programs_config.clear();
-}
+void Config::clear() { _programs_config.clear(); }
 
-std::ostream& operator<<(std::ostream& os, const Config& object) {
+std::ostream &operator<<(std::ostream &os, const Config &object) {
   for (const auto &config : object.get_programs_config()) {
     os << config;
   }
@@ -43,12 +43,10 @@ std::vector<ProgramConfig> Config::get_programs_config() const {
 }
 
 static bool is_valid_program_name(const std::string &name) {
-    if (name.empty()) {
-        return false;
-    }
-    return std::all_of(name.begin(), name.end(), [](unsigned char c) {
-      return std::isalnum(c) || c == '_';
-    });
+  if (name.empty()) {
+    return false;
+  }
+  return std::all_of(name.begin(), name.end(), [](unsigned char c) {
+    return std::isalnum(c) || c == '_';
+  });
 }
-
-
