@@ -1,0 +1,24 @@
+name: Clang-Format Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout your code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install clang-format (choose version you want, e.g., clang-format-14)
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format-18
+
+      # Run clang-format check
+      - name: Run clang-format
+        run: |
+          FILES=$(git ls-files "*.cpp" "*.hpp")
+          echo "$FILES" | xargs clang-format-18 --dry-run --Werror
