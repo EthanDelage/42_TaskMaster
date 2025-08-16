@@ -19,4 +19,4 @@ re: fclean all
 
 .PHONY: format
 format:
-	git ls-files "*.c" "*.h" | xargs clang-format -i
+	git ls-files "*.cpp" "*.hpp" | xargs clang-format -i
