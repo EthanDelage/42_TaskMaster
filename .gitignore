@@ -46,3 +46,8 @@
 # IDE
 .idea/
 cmake-build-debug/
+.cache/
+compile_commands.json
+
+# assets
+config.yaml
