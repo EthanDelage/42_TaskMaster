@@ -5,21 +5,21 @@
 
 class Process {
 public:
-    explicit Process(std::string  cmd);
+  explicit Process(std::string cmd);
 
-    int start();
-    int stop(int sig);
-    int restart(int sig);
+  int start();
+  int stop(int sig);
+  int restart(int sig);
 
-    pid_t getpid() const;
+  pid_t getpid() const;
+
 private:
-    static std::string get_cmd_path(const std::string &cmd);
+  static std::string get_cmd_path(const std::string &cmd);
 
-    std::string _cmd; // TODO: change cmd by program_config (when it is implemented)
-    std::string _cmd_path;
-    pid_t _pid;
+  // TODO: change cmd by program_config (when it is implemented)
+  std::string _cmd;
+  std::string _cmd_path;
+  pid_t _pid;
 };
 
-
-
-#endif //PROCESS_HPP
+#endif // PROCESS_HPP
