@@ -6,7 +6,7 @@ add_library(common
 
 target_compile_options(common
   PRIVATE
-  ${CMAKE_CXX_ERROR_FLAGS}
+  ${CXX_FLAGS}
 )
 
 target_include_directories(common PUBLIC ${CMAKE_SOURCE_DIR}/include)

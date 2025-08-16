@@ -4,7 +4,7 @@ add_executable(client
 
 target_compile_options(client
   PRIVATE
-  ${CMAKE_CXX_ERROR_FLAGS}
+  ${CXX_FLAGS}
 )
 
 target_link_libraries(client common)

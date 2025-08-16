@@ -17,7 +17,7 @@ FetchContent_MakeAvailable(yaml-cpp)
 
 target_compile_options(server
   PRIVATE
-  ${CMAKE_CXX_ERROR_FLAGS}
+  ${CXX_FLAGS}
 )
 
 target_link_libraries(server
