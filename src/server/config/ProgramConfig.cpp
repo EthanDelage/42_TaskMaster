@@ -2,14 +2,15 @@
 
 #include <cctype>
 #include <csignal>
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
-#include <filesystem>
 
 static bool is_file_writeable(std::string path);
 static bool is_directory(std::string path);
 
-ProgramConfig::ProgramConfig(std::string  name, const YAML::Node& config_node): _name(std::move(name)) {
+ProgramConfig::ProgramConfig(std::string name, const YAML::Node &config_node)
+    : _name(std::move(name)) {
   parse_cmd(config_node);
   parse_workingdir(config_node);
   parse_stdout(config_node);
@@ -37,7 +38,8 @@ void ProgramConfig::parse_workingdir(YAML::Node config_node) {
   if (config_node["workingdir"]) {
     _workingdir = config_node["workingdir"].as<std::string>();
     if (!is_directory(_workingdir)) {
-      throw std::runtime_error("ProgramConfig: workingdir: Not a directory (" + _workingdir + ")");
+      throw std::runtime_error("ProgramConfig: workingdir: Not a directory (" +
+                               _workingdir + ")");
     }
   }
 }
@@ -48,7 +50,8 @@ void ProgramConfig::parse_stdout(YAML::Node config_node) {
   }
   _stdout = config_node["stdout"].as<std::string>();
   if (!is_file_writeable(_stdout)) {
-      throw std::runtime_error("ProgramConfig: stdout: Invalid permission (" + _stdout + ")");
+    throw std::runtime_error("ProgramConfig: stdout: Invalid permission (" +
+                             _stdout + ")");
   }
 }
 
@@ -58,7 +61,8 @@ void ProgramConfig::parse_stderr(YAML::Node config_node) {
   }
   _stderr = config_node["stderr"].as<std::string>();
   if (!is_file_writeable(_stderr)) {
-      throw std::runtime_error("ProgramConfig: stderr: Invalid permission (" + _stderr + ")");
+    throw std::runtime_error("ProgramConfig: stderr: Invalid permission (" +
+                             _stderr + ")");
   }
 }
 
@@ -68,62 +72,51 @@ void ProgramConfig::parse_stopsignal(YAML::Node config_node) {
   }
   std::string signal_string = config_node["stopsignal"].as<std::string>();
   static const std::unordered_map<std::string, int> signal_table = {
-    {"HUP", SIGHUP},
-    {"INT", SIGINT},
-    {"QUIT", SIGQUIT},
-    {"ILL", SIGILL},
-    {"ABRT", SIGABRT},
-    {"FPE", SIGFPE},
-    {"KILL", SIGKILL},
-    {"SEGV", SIGSEGV},
-    {"PIPE", SIGPIPE},
-    {"ALRM", SIGALRM},
-    {"TERM", SIGTERM},
-    {"USR1", SIGUSR1},
-    {"USR2", SIGUSR2},
-    {"CHLD", SIGCHLD},
-    {"CONT", SIGCONT},
-    {"STOP", SIGSTOP},
-    {"TSTP", SIGTSTP},
-    {"TTIN", SIGTTIN},
-    {"TTOU", SIGTTOU}
-  };
+      {"HUP", SIGHUP},   {"INT", SIGINT},   {"QUIT", SIGQUIT},
+      {"ILL", SIGILL},   {"ABRT", SIGABRT}, {"FPE", SIGFPE},
+      {"KILL", SIGKILL}, {"SEGV", SIGSEGV}, {"PIPE", SIGPIPE},
+      {"ALRM", SIGALRM}, {"TERM", SIGTERM}, {"USR1", SIGUSR1},
+      {"USR2", SIGUSR2}, {"CHLD", SIGCHLD}, {"CONT", SIGCONT},
+      {"STOP", SIGSTOP}, {"TSTP", SIGTSTP}, {"TTIN", SIGTTIN},
+      {"TTOU", SIGTTOU}};
 
   auto it = signal_table.find(signal_string);
   if (it == signal_table.end()) {
-    throw std::runtime_error("ProgramConfig: Invalid stopsignal value (" + signal_string + ")");
+    throw std::runtime_error("ProgramConfig: Invalid stopsignal value (" +
+                             signal_string + ")");
   }
   _stopsignal = it->second;
 }
 
 void ProgramConfig::parse_numprocs(YAML::Node config_node) {
-  _numprocs = config_node["numprocs"] ?
-    config_node["numprocs"].as<unsigned long>() : 1;
+  _numprocs =
+      config_node["numprocs"] ? config_node["numprocs"].as<unsigned long>() : 1;
 }
 
 void ProgramConfig::parse_starttime(YAML::Node config_node) {
-  _starttime = config_node["starttime"] ?
-    config_node["starttime"].as<unsigned long>() : 0;
+  _starttime = config_node["starttime"]
+                   ? config_node["starttime"].as<unsigned long>()
+                   : 0;
 }
 
 void ProgramConfig::parse_startretries(YAML::Node config_node) {
-  _startretries = config_node["startretries"] ?
-    config_node["startretries"].as<unsigned long>() : 0;
+  _startretries = config_node["startretries"]
+                      ? config_node["startretries"].as<unsigned long>()
+                      : 0;
 }
 
 void ProgramConfig::parse_stoptime(YAML::Node config_node) {
-  _stoptime = config_node["stoptime"] ?
-    config_node["stoptime"].as<unsigned long>() : 0;
+  _stoptime =
+      config_node["stoptime"] ? config_node["stoptime"].as<unsigned long>() : 0;
 }
 
 void ProgramConfig::parse_umask(YAML::Node config_node) {
-  _umask = config_node["umask"] ?
-    config_node["umask"].as<unsigned long>() : 0;
+  _umask = config_node["umask"] ? config_node["umask"].as<unsigned long>() : 0;
 }
 
 void ProgramConfig::parse_autostart(YAML::Node config_node) {
-  _autostart = config_node["autostart"] ?
-    config_node["autostart"].as<bool>() : false;
+  _autostart =
+      config_node["autostart"] ? config_node["autostart"].as<bool>() : false;
 }
 
 void ProgramConfig::parse_autorestart(YAML::Node config_node) {
@@ -140,7 +133,8 @@ void ProgramConfig::parse_autorestart(YAML::Node config_node) {
   } else if (value == "unexpected") {
     _autorestart = AutoRestart::Unexpected;
   } else {
-    throw std::runtime_error("ProgramConfig: Invalid autorestart value (" + value + ")");
+    throw std::runtime_error("ProgramConfig: Invalid autorestart value (" +
+                             value + ")");
   }
 }
 
@@ -148,8 +142,9 @@ void ProgramConfig::parse_env(YAML::Node config_node) {
   if (!config_node["env"]) {
     return;
   }
-  for (const auto& entry : config_node["env"]) {
-    _env.push_back(entry.first.as<std::string>() + "=" + entry.second.as<std::string>());
+  for (const auto &entry : config_node["env"]) {
+    _env.push_back(entry.first.as<std::string>() + "=" +
+                   entry.second.as<std::string>());
   } // TODO: test this
 }
 
@@ -157,7 +152,7 @@ void ProgramConfig::parse_exitcodes(YAML::Node config_node) {
   if (!config_node["exitcodes"]) {
     return;
   }
-  for (const auto& entry : config_node["exitcodes"]) {
+  for (const auto &entry : config_node["exitcodes"]) {
     _exitcodes.push_back(entry.as<uint8_t>());
   }
 }
@@ -176,7 +171,7 @@ static bool is_directory(std::string path) {
   return std::filesystem::is_directory(path);
 }
 
-std::ostream& operator<<(std::ostream& os, const ProgramConfig& object) {
+std::ostream &operator<<(std::ostream &os, const ProgramConfig &object) {
   os << "  Program: " << object.get_name() << "\n";
   os << "  Cmd: " << object.get_cmd() << "\n";
   os << "  NumProcs: " << object.get_numprocs() << "\n";
@@ -209,64 +204,32 @@ std::ostream& operator<<(std::ostream& os, const ProgramConfig& object) {
   return os;
 }
 
-std::string ProgramConfig::get_name() const {
-  return _name;
-}
+std::string ProgramConfig::get_name() const { return _name; }
 
-std::string ProgramConfig::get_cmd() const {
-  return _cmd;
-}
+std::string ProgramConfig::get_cmd() const { return _cmd; }
 
-std::string ProgramConfig::get_workingdir() const {
-  return _workingdir;
-}
+std::string ProgramConfig::get_workingdir() const { return _workingdir; }
 
-std::string ProgramConfig::get_stdout() const {
+std::string ProgramConfig::get_stdout() const { return _stdout; }
 
-  return _stdout;
-}
+std::string ProgramConfig::get_stderr() const { return _stderr; }
 
-std::string ProgramConfig::get_stderr() const {
-  return _stderr;
-}
+int ProgramConfig::get_stopsignal() const { return _stopsignal; }
 
-int ProgramConfig::get_stopsignal() const {
-  return _stopsignal;
-}
+unsigned long ProgramConfig::get_numprocs() const { return _numprocs; }
 
-unsigned long ProgramConfig::get_numprocs() const {
-  return _numprocs;
-}
+unsigned long ProgramConfig::get_starttime() const { return _starttime; }
 
-unsigned long ProgramConfig::get_starttime() const {
-  return _starttime;
-}
+unsigned long ProgramConfig::get_startretries() const { return _startretries; }
 
-unsigned long ProgramConfig::get_startretries() const {
-  return _startretries;
-}
+unsigned long ProgramConfig::get_stoptime() const { return _stoptime; }
 
-unsigned long ProgramConfig::get_stoptime() const {
-  return _stoptime;
-}
+unsigned long ProgramConfig::get_umask() const { return _umask; }
 
-unsigned long ProgramConfig::get_umask() const {
-  return _umask;
-}
+bool ProgramConfig::get_autostart() const { return _autostart; }
 
-bool ProgramConfig::get_autostart() const {
-  return _autostart;
-}
+AutoRestart ProgramConfig::get_autorestart() const { return _autorestart; }
 
-AutoRestart ProgramConfig::get_autorestart() const {
-  return _autorestart;
-}
+std::vector<std::string> ProgramConfig::get_env() const { return _env; }
 
-std::vector<std::string> ProgramConfig::get_env() const {
-  return _env;
-}
-
-std::vector<uint8_t> ProgramConfig::get_exitcodes() const {
-  return _exitcodes;
-}
-
+std::vector<uint8_t> ProgramConfig::get_exitcodes() const { return _exitcodes; }
