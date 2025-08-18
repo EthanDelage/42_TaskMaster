@@ -15,12 +15,6 @@ enum class AutoRestart { True, False, Unexpected };
 class ProgramConfig {
 public:
   explicit ProgramConfig(std::string name, const YAML::Node &config_node);
-  // ProgramConfig(const ProgramConfig&) = delete;
-  // ProgramConfig& operator=(const ProgramConfig&) = delete;
-  //
-  // ProgramConfig(ProgramConfig&& other) noexcept;
-  // ProgramConfig& operator=(ProgramConfig&& other) noexcept;
-
 
   void parse_cmd(YAML::Node config_node);
   void parse_workingdir(YAML::Node config_node);

@@ -31,19 +31,6 @@ std::vector<ProgramConfig> Config::parse() {
   return program_configs;
 }
 
-// void Config::clear() { _programs_config.clear(); }
-
-// std::ostream &operator<<(std::ostream &os, const Config &object) {
-//   for (const auto &config : object.get_programs_config()) {
-//     os << config;
-//   }
-//   return os;
-// }
-
-// std::vector<ProgramConfig> Config::get_programs_config() const {
-//   return _programs_config;
-// }
-
 static bool is_valid_program_name(const std::string &name) {
   if (name.empty()) {
     return false;

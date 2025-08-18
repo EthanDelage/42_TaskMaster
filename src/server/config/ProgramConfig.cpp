@@ -31,31 +31,6 @@ ProgramConfig::ProgramConfig(std::string name, const YAML::Node &config_node)
   parse_exitcodes(config_node);
 }
 
-// ProgramConfig::ProgramConfig(ProgramConfig&& other) noexcept {
-//   _name = other._name;
-//   _cmd = other._cmd;
-//   _workingdir = other._workingdir;
-//   _stdout = other._stdout;
-//   _stderr = other._stderr;
-//   _stopsignal = other._stopsignal;
-//   _starttime = other._starttime;
-//   _startretries = other._startretries;
-//   _stoptime = other._stoptime;
-//   _umask = other._umask;
-//   _autostart = other._autostart;
-//   _autorestart = other._autorestart;
-//   _env = other._env;
-//   _exitcodes = other._exitcodes;
-//   other._cmd = {};
-// }
-//
-// ProgramConfig::ProgramConfig& operator=(ProgramConfig&& other) noexcept {
-//   if (this != &other) {
-//     wordfree(&_cmd);
-//   }
-//   return *this;
-// }
-
 void ProgramConfig::parse_cmd(YAML::Node config_node) {
   if (!config_node["cmd"]) {
     throw std::runtime_error("ProgramConfig: Missing required 'cmd' field");
