@@ -1,16 +1,20 @@
 #include "server/config/ProgramConfig.hpp"
+#include "server/config/WordexpWrapper.hpp"
 
 #include <cctype>
 #include <csignal>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
+extern "C" {
+  #include <wordexp.h>
+}
 
 static bool is_file_writeable(std::string path);
 static bool is_directory(std::string path);
 
 ProgramConfig::ProgramConfig(std::string name, const YAML::Node &config_node)
-    : _name(std::move(name)) {
+    : _name(std::move(name)), _cmd{} {
   parse_cmd(config_node);
   parse_workingdir(config_node);
   parse_stdout(config_node);
@@ -27,11 +31,36 @@ ProgramConfig::ProgramConfig(std::string name, const YAML::Node &config_node)
   parse_exitcodes(config_node);
 }
 
+// ProgramConfig::ProgramConfig(ProgramConfig&& other) noexcept {
+//   _name = other._name;
+//   _cmd = other._cmd;
+//   _workingdir = other._workingdir;
+//   _stdout = other._stdout;
+//   _stderr = other._stderr;
+//   _stopsignal = other._stopsignal;
+//   _starttime = other._starttime;
+//   _startretries = other._startretries;
+//   _stoptime = other._stoptime;
+//   _umask = other._umask;
+//   _autostart = other._autostart;
+//   _autorestart = other._autorestart;
+//   _env = other._env;
+//   _exitcodes = other._exitcodes;
+//   other._cmd = {};
+// }
+//
+// ProgramConfig::ProgramConfig& operator=(ProgramConfig&& other) noexcept {
+//   if (this != &other) {
+//     wordfree(&_cmd);
+//   }
+//   return *this;
+// }
+
 void ProgramConfig::parse_cmd(YAML::Node config_node) {
   if (!config_node["cmd"]) {
     throw std::runtime_error("ProgramConfig: Missing required 'cmd' field");
   }
-  _cmd = config_node["cmd"].as<std::string>();
+  _cmd.expand(config_node["cmd"].as<std::string>());
 }
 
 void ProgramConfig::parse_workingdir(YAML::Node config_node) {
@@ -69,6 +98,7 @@ void ProgramConfig::parse_stderr(YAML::Node config_node) {
 void ProgramConfig::parse_stopsignal(YAML::Node config_node) {
   if (!config_node["stopsignal"]) {
     _stopsignal = SIGSTOP;
+    return;
   }
   std::string signal_string = config_node["stopsignal"].as<std::string>();
   static const std::unordered_map<std::string, int> signal_table = {
@@ -173,7 +203,7 @@ static bool is_directory(std::string path) {
 
 std::ostream &operator<<(std::ostream &os, const ProgramConfig &object) {
   os << "  Program: " << object.get_name() << "\n";
-  os << "  Cmd: " << object.get_cmd() << "\n";
+  // os << "  Cmd: " << object.get_cmd() << "\n";
   os << "  NumProcs: " << object.get_numprocs() << "\n";
   os << "  Umask: " << std::oct << object.get_umask() << std::dec << "\n";
   os << "  Working Dir: " << object.get_workingdir() << "\n";
@@ -206,7 +236,7 @@ std::ostream &operator<<(std::ostream &os, const ProgramConfig &object) {
 
 std::string ProgramConfig::get_name() const { return _name; }
 
-std::string ProgramConfig::get_cmd() const { return _cmd; }
+char** ProgramConfig::get_cmd() const { return _cmd.ptr->we_wordv; }
 
 std::string ProgramConfig::get_workingdir() const { return _workingdir; }
 

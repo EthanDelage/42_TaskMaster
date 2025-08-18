@@ -1,8 +1,10 @@
 add_executable(server
         main.cpp
         Process.cpp
+        Taskmaster.cpp
         config/Config.cpp
         config/ProgramConfig.cpp
+        config/WordexpWrapper.cpp
 )
 
 include(FetchContent)

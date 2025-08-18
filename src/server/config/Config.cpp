@@ -8,8 +8,9 @@ static bool is_valid_program_name(const std::string &name);
 Config::Config(std::string config_path)
     : _config_path(std::move(config_path)) {}
 
-void Config::parse() {
+std::vector<ProgramConfig> Config::parse() {
   std::string program_name;
+  std::vector<ProgramConfig> program_configs;
   YAML::Node root = YAML::LoadFile(_config_path);
 
   if (!root["programs"]) {
@@ -25,22 +26,23 @@ void Config::parse() {
     // TODO: try catch
     ProgramConfig program_config(program_name, config_node);
 
-    _programs_config.push_back(program_config);
+    program_configs.push_back(std::move(program_config));
   }
+  return program_configs;
 }
 
-void Config::clear() { _programs_config.clear(); }
+// void Config::clear() { _programs_config.clear(); }
 
-std::ostream &operator<<(std::ostream &os, const Config &object) {
-  for (const auto &config : object.get_programs_config()) {
-    os << config;
-  }
-  return os;
-}
+// std::ostream &operator<<(std::ostream &os, const Config &object) {
+//   for (const auto &config : object.get_programs_config()) {
+//     os << config;
+//   }
+//   return os;
+// }
 
-std::vector<ProgramConfig> Config::get_programs_config() const {
-  return _programs_config;
-}
+// std::vector<ProgramConfig> Config::get_programs_config() const {
+//   return _programs_config;
+// }
 
 static bool is_valid_program_name(const std::string &name) {
   if (name.empty()) {
