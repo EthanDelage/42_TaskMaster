@@ -6,15 +6,14 @@
 #include <iostream>
 #include <stdexcept>
 extern "C" {
-  #include <wordexp.h>
+#include <wordexp.h>
 }
 
 static bool is_file_writeable(std::string path);
 static bool is_directory(std::string path);
 
 ProgramConfig::ProgramConfig(std::string name, const YAML::Node &config_node)
-    : _name(std::move(name)),
-    _cmd(new wordexp_t) {
+    : _name(std::move(name)), _cmd(new wordexp_t) {
   parse_cmd(config_node);
   parse_workingdir(config_node);
   parse_stdout(config_node);
@@ -83,8 +82,7 @@ void ProgramConfig::parse_stopsignal(YAML::Node config_node) {
       {"ALRM", SIGALRM}, {"TERM", SIGTERM}, {"USR1", SIGUSR1},
       {"USR2", SIGUSR2}, {"CHLD", SIGCHLD}, {"CONT", SIGCONT},
       {"STOP", SIGSTOP}, {"TSTP", SIGTSTP}, {"TTIN", SIGTTIN},
-      {"TTOU", SIGTTOU}
-  };
+      {"TTOU", SIGTTOU}};
 
   auto it = signal_table.find(signal_string);
   if (it == signal_table.end()) {
@@ -212,7 +210,7 @@ std::ostream &operator<<(std::ostream &os, const ProgramConfig &object) {
 
 std::string ProgramConfig::get_name() const { return _name; }
 
-char** ProgramConfig::get_cmd() const { return _cmd.get()->we_wordv; }
+char **ProgramConfig::get_cmd() const { return _cmd.get()->we_wordv; }
 
 std::string ProgramConfig::get_workingdir() const { return _workingdir; }
 
@@ -240,7 +238,7 @@ std::vector<std::string> ProgramConfig::get_env() const { return _env; }
 
 std::vector<uint8_t> ProgramConfig::get_exitcodes() const { return _exitcodes; }
 
-void WordexpDestructor::operator()(wordexp_t* p) const {
+void WordexpDestructor::operator()(wordexp_t *p) const {
   if (p) {
     wordfree(p);
   }

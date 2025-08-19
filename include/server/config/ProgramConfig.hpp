@@ -6,15 +6,14 @@
 #include <vector>
 #include <yaml-cpp/yaml.h>
 extern "C" {
-  #include <wordexp.h>
+#include <wordexp.h>
 }
 
 enum class AutoRestart { True, False, Unexpected };
 
 struct WordexpDestructor {
-  void operator()(wordexp_t* p) const;
+  void operator()(wordexp_t *p) const;
 };
-
 
 class ProgramConfig {
 public:
@@ -36,7 +35,7 @@ public:
   void parse_exitcodes(YAML::Node config_node);
 
   std::string get_name() const;
-  char** get_cmd() const;
+  char **get_cmd() const;
   std::string get_workingdir() const;
   std::string get_stdout() const;
   std::string get_stderr() const;

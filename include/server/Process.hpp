@@ -1,19 +1,19 @@
 #ifndef PROCESS_HPP
 #define PROCESS_HPP
 
-#include <string>
 #include "server/config/ProgramConfig.hpp"
+#include <string>
 
 class Process {
 public:
-  explicit Process(ProgramConfig& config);
+  explicit Process(ProgramConfig &config);
 
   int start();
   int stop(int sig);
   int restart(int sig);
 
   pid_t get_pid() const;
-  ProgramConfig& get_program_config();
+  ProgramConfig &get_program_config();
 
 private:
   static std::string get_cmd_path(const std::string &cmd);

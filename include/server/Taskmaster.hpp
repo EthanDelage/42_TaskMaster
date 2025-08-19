@@ -1,8 +1,8 @@
 #ifndef TASKMASTER_HPP
 #define TASKMASTER_HPP
 
-#include "server/config/Config.hpp"
 #include "server/Process.hpp"
+#include "server/config/Config.hpp"
 
 class Taskmaster {
 public:

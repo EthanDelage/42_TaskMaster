@@ -5,12 +5,12 @@
 Taskmaster::Taskmaster(Config config) {
   std::vector<ProgramConfig> program_configs = config.parse();
 
-  for (auto& config : program_configs) {
+  for (auto &config : program_configs) {
     _processes.push_back(Process(config));
   }
 }
 
-void  Taskmaster::loop() {
+void Taskmaster::loop() {
   start();
   while (true) {
     return;
@@ -18,9 +18,11 @@ void  Taskmaster::loop() {
 }
 
 int Taskmaster::start() {
-  for (Process& process : _processes) {
+  for (Process &process : _processes) {
     if (process.get_program_config().get_autostart()) {
-      std::cout << "[Taskmaster] Starting " << process.get_program_config().get_name() << "..." << std::endl;
+      std::cout << "[Taskmaster] Starting "
+                << process.get_program_config().get_name() << "..."
+                << std::endl;
       process.start();
     }
   }
