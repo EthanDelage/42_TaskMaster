@@ -1,7 +1,6 @@
 #ifndef PROGRAM_CONFIG_HPP
 #define PROGRAM_CONFIG_HPP
 
-#include "server/config/WordexpWrapper.hpp"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -11,6 +10,11 @@ extern "C" {
 }
 
 enum class AutoRestart { True, False, Unexpected };
+
+struct WordexpDestructor {
+  void operator()(wordexp_t* p) const;
+};
+
 
 class ProgramConfig {
 public:
@@ -49,7 +53,7 @@ public:
 
 private:
   std::string _name;
-  WordexpWrapper _cmd;
+  std::unique_ptr<wordexp_t, WordexpDestructor> _cmd;
   std::string _workingdir;
   std::string _stdout;
   std::string _stderr;

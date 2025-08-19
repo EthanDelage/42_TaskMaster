@@ -1,5 +1,4 @@
 #include "server/config/ProgramConfig.hpp"
-#include "server/config/WordexpWrapper.hpp"
 
 #include <cctype>
 #include <csignal>
@@ -14,7 +13,8 @@ static bool is_file_writeable(std::string path);
 static bool is_directory(std::string path);
 
 ProgramConfig::ProgramConfig(std::string name, const YAML::Node &config_node)
-    : _name(std::move(name)), _cmd{} {
+    : _name(std::move(name)),
+    _cmd(new wordexp_t) {
   parse_cmd(config_node);
   parse_workingdir(config_node);
   parse_stdout(config_node);
@@ -35,7 +35,7 @@ void ProgramConfig::parse_cmd(YAML::Node config_node) {
   if (!config_node["cmd"]) {
     throw std::runtime_error("ProgramConfig: Missing required 'cmd' field");
   }
-  _cmd.expand(config_node["cmd"].as<std::string>());
+  wordexp(config_node["cmd"].as<std::string>().c_str(), _cmd.get(), 0);
 }
 
 void ProgramConfig::parse_workingdir(YAML::Node config_node) {
@@ -83,7 +83,8 @@ void ProgramConfig::parse_stopsignal(YAML::Node config_node) {
       {"ALRM", SIGALRM}, {"TERM", SIGTERM}, {"USR1", SIGUSR1},
       {"USR2", SIGUSR2}, {"CHLD", SIGCHLD}, {"CONT", SIGCONT},
       {"STOP", SIGSTOP}, {"TSTP", SIGTSTP}, {"TTIN", SIGTTIN},
-      {"TTOU", SIGTTOU}};
+      {"TTOU", SIGTTOU}
+  };
 
   auto it = signal_table.find(signal_string);
   if (it == signal_table.end()) {
@@ -211,7 +212,7 @@ std::ostream &operator<<(std::ostream &os, const ProgramConfig &object) {
 
 std::string ProgramConfig::get_name() const { return _name; }
 
-char** ProgramConfig::get_cmd() const { return _cmd.ptr->we_wordv; }
+char** ProgramConfig::get_cmd() const { return _cmd.get()->we_wordv; }
 
 std::string ProgramConfig::get_workingdir() const { return _workingdir; }
 
@@ -238,3 +239,9 @@ AutoRestart ProgramConfig::get_autorestart() const { return _autorestart; }
 std::vector<std::string> ProgramConfig::get_env() const { return _env; }
 
 std::vector<uint8_t> ProgramConfig::get_exitcodes() const { return _exitcodes; }
+
+void WordexpDestructor::operator()(wordexp_t* p) const {
+  if (p) {
+    wordfree(p);
+  }
+}

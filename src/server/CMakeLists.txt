@@ -4,7 +4,6 @@ add_executable(server
         Taskmaster.cpp
         config/Config.cpp
         config/ProgramConfig.cpp
-        config/WordexpWrapper.cpp
 )
 
 include(FetchContent)
