@@ -1,19 +1,16 @@
 #include "server/Process.hpp"
+#include "server/Taskmaster.hpp"
+#include "server/config/Config.hpp"
 #include <cstdlib>
 #include <iostream>
-#include <server/config/Config.hpp>
 #include <sys/wait.h>
 
 int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
-  Config configs("config.yaml");
-  configs.parse();
+  Config config("config.yaml");
 
-  std::cout << configs;
-
-  Process ls = Process("ls");
-  ls.start();
-  wait(nullptr);
+  Taskmaster taskmaster(config);
+  taskmaster.loop();
   return 0;
 }
