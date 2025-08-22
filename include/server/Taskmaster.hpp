@@ -14,4 +14,4 @@ private:
   std::vector<Process> _processes;
 };
 
-#endif // PROCESS_HPP
+#endif // TASKMASTER_HPP

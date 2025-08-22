@@ -7,8 +7,8 @@
 
 class Config {
 public:
-  explicit Config(std::string filename);
-  std::vector<ProgramConfig> parse();
+  explicit Config(std::string config_path);
+  std::vector<ProgramConfig> parse() const;
 
 private:
   std::string _config_path;

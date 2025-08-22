@@ -8,7 +8,7 @@ static bool is_valid_program_name(const std::string &name);
 Config::Config(std::string config_path)
     : _config_path(std::move(config_path)) {}
 
-std::vector<ProgramConfig> Config::parse() {
+std::vector<ProgramConfig> Config::parse() const {
   std::string program_name;
   std::vector<ProgramConfig> program_configs;
   YAML::Node root = YAML::LoadFile(_config_path);

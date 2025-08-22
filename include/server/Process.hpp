@@ -6,7 +6,7 @@
 
 class Process {
 public:
-  explicit Process(ProgramConfig &config);
+  explicit Process(ProgramConfig &program_config);
 
   int start();
   int stop(int sig);

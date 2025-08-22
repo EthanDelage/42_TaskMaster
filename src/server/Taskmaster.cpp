@@ -5,8 +5,8 @@
 Taskmaster::Taskmaster(Config config) {
   std::vector<ProgramConfig> program_configs = config.parse();
 
-  for (auto &config : program_configs) {
-    _processes.push_back(Process(config));
+  for (auto &program_config : program_configs) {
+    _processes.emplace_back(program_config);
   }
 }
 

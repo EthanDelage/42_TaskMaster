@@ -2,14 +2,13 @@
 
 #include "common/utils.hpp"
 #include <iostream>
-#include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 extern char **environ; // envp
 
-Process::Process(ProgramConfig &config)
-    : _program_config(std::move(config)),
+Process::Process(ProgramConfig &program_config)
+    : _program_config(std::move(program_config)),
       _cmd_path(get_cmd_path(_program_config.get_cmd()[0])), _pid(-1) {}
 
 int Process::start() {
