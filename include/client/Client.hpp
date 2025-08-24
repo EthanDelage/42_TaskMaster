@@ -8,7 +8,7 @@
 typedef struct client_command_s client_command_t;
 struct client_command_s {
   std::string name;
-  std::string arg;
+  std::vector<std::string> args;
   std::string doc;
   std::function<void(const std::vector<std::string> &)> func;
 };
@@ -28,12 +28,14 @@ public:
   static void print_header();
 
 private:
-  std::vector<client_command_t> _commands;
+  std::unordered_map<std::string, client_command_t> _commands_map;
   size_t _usage_max_len;
   std::string _prompt_string;
   bool _is_running;
 
+  void add_command(const client_command_t &command);
   size_t get_usage_max_len() const;
+  static bool is_valid_args(const client_command_t &command, const std::vector<std::string> &args);
 };
 
 #endif // CLIENT_HPP
