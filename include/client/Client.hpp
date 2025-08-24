@@ -35,7 +35,8 @@ private:
 
   void add_command(const client_command_t &command);
   size_t get_usage_max_len() const;
-  static bool is_valid_args(const client_command_t &command, const std::vector<std::string> &args);
+  static bool is_valid_args(const client_command_t &command,
+                            const std::vector<std::string> &args);
 };
 
 #endif // CLIENT_HPP
