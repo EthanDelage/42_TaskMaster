@@ -1,7 +1,6 @@
 #include "server/Process.hpp"
 
 #include "common/utils.hpp"
-#include <iostream>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -9,7 +8,8 @@ extern char **environ; // envp
 
 Process::Process(ProgramConfig &program_config)
     : _program_config(std::move(program_config)),
-      _cmd_path(get_cmd_path(_program_config.get_cmd()[0])), _pid(-1) {}
+      _cmd_path(get_cmd_path(_program_config.get_cmd()[0])), _pid(-1),
+      _state(State::IDLE) {}
 
 int Process::start() {
   _pid = fork();
@@ -50,6 +50,8 @@ int Process::restart(int sig) {
 pid_t Process::get_pid() const { return _pid; }
 
 ProgramConfig &Process::get_program_config() { return _program_config; }
+
+State Process::get_state() const { return _state; }
 
 std::string Process::get_cmd_path(const std::string &cmd) {
   if (cmd.find('/') != std::string::npos) {
