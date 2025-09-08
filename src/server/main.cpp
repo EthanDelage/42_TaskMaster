@@ -1,14 +1,14 @@
 #include "server/Taskmaster.hpp"
 #include "server/config/Config.hpp"
-#include <csignal>
-#include <cstdlib>
 #include <exception>
 #include <iostream>
-#include <sys/wait.h>
 
 int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
+  if (daemon(0, 0) == -1) {
+    perror("daemon");
+  }
   Config config("config.yaml");
 
   Taskmaster taskmaster(config);
