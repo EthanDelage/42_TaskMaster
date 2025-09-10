@@ -20,3 +20,7 @@ re: fclean all
 .PHONY: format
 format:
 	git ls-files "*.cpp" "*.hpp" | xargs clang-format -i
+
+.PHONY: compile_commands
+compile_commands:
+	cmake -S . -B $(BUILD_DIR) -DCMAKE_EXPORT_COMPILE_COMMANDS=1
