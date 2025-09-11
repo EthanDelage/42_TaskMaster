@@ -2,11 +2,11 @@
 #include "server/Process.hpp"
 #include "server/config/ProgramConfig.hpp"
 
+#include <chrono>
 #include <csignal>
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
-#include <chrono>
 extern "C" {
 #include <poll.h>
 #include <sys/wait.h>
@@ -16,8 +16,9 @@ extern "C" {
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
-static bool process_check_restart(Process& process, int status, unsigned long runtime);
-static bool process_check_unexpected(Process& process, int status);
+static bool process_check_restart(Process &process, int status,
+                                  unsigned long runtime);
+static bool process_check_unexpected(Process &process, int status);
 static void sigchld_handler(int);
 
 volatile sig_atomic_t sigchld_received_g = 0;
@@ -86,19 +87,24 @@ void Taskmaster::reap_processes() {
   while (_running_processes.size() > 0 &&
          (pid = waitpid(-1, &status, WNOHANG)) > 0) {
     status = WEXITSTATUS(status);
-    std::cout << "[Taskmaster] Process " << pid << " exited with status " << status
-              << std::endl;
+    std::cout << "[Taskmaster] Process " << pid << " exited with status "
+              << status << std::endl;
     auto it = _running_processes.find(pid);
-    if (it == _running_processes.end()) { std::cerr << "Error: Process " << pid << " not found in _launched_processes"
-                << std::endl;
+    if (it == _running_processes.end()) {
+      std::cerr << "Error: Process " << pid
+                << " not found in _launched_processes" << std::endl;
       // This error should never occur, if it does something went wrong when
       // adding processes to _running_processes
       throw std::runtime_error("trying to reap a process whose pid is not "
                                "found in _running_processes");
     }
 
-    runtime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - it->second.get_start_time()).count();
-    std::cout << "[Taskmaster] Process " << pid << " runtime: " << runtime << std::endl;
+    runtime =
+        std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now() - it->second.get_start_time())
+            .count();
+    std::cout << "[Taskmaster] Process " << pid << " runtime: " << runtime
+              << std::endl;
 
     _running_processes.erase(it);
     if (process_check_restart(it->second, status, runtime)) {
@@ -114,39 +120,47 @@ void Taskmaster::reap_processes() {
   }
 }
 
-static bool process_check_restart(Process& process, int status, unsigned long runtime) {
+static bool process_check_restart(Process &process, int status,
+                                  unsigned long runtime) {
   if (runtime < process.get_program_config().get_starttime()) {
     // Process is unsuccessfully started
-    std::cout << "[Taskmaster] process " << process.get_pid() << " unsuccessfully started" << std::endl;
-    if (process.get_startretries() >= process.get_program_config().get_startretries()) {
-      std::cout << "[Taskmaster] process " << process.get_pid() << " aborting" << std::endl;
+    std::cout << "[Taskmaster] process " << process.get_pid()
+              << " unsuccessfully started" << std::endl;
+    if (process.get_startretries() >=
+        process.get_program_config().get_startretries()) {
+      std::cout << "[Taskmaster] process " << process.get_pid() << " aborting"
+                << std::endl;
       // Process starting aborted
       process.set_startretries(0);
       return false;
     } else {
-      std::cout << "[Taskmaster] process " << process.get_pid() << " retrying" << std::endl;
+      std::cout << "[Taskmaster] process " << process.get_pid() << " retrying"
+                << std::endl;
       process.set_startretries(process.get_startretries() + 1);
       return true;
     }
   }
   // Process is successfully started
   switch (process.get_program_config().get_autorestart()) {
-    case AutoRestart::False:
-      std::cout << "[Taskmaster] process " << process.get_pid() << " autorestart: false" << std::endl;
-      return false;
-      std::cout << "[Taskmaster] process " << process.get_pid() << " autorestart: true" << std::endl;
-    case AutoRestart::True:
-      return true;
-    case AutoRestart::Unexpected:
-      std::cout << "[Taskmaster] process " << process.get_pid() << " autorestart: unexpected" << std::endl;
-      return process_check_unexpected(process, status);
+  case AutoRestart::False:
+    std::cout << "[Taskmaster] process " << process.get_pid()
+              << " autorestart: false" << std::endl;
+    return false;
+    std::cout << "[Taskmaster] process " << process.get_pid()
+              << " autorestart: true" << std::endl;
+  case AutoRestart::True:
+    return true;
+  case AutoRestart::Unexpected:
+    std::cout << "[Taskmaster] process " << process.get_pid()
+              << " autorestart: unexpected" << std::endl;
+    return process_check_unexpected(process, status);
   }
 }
 
 /*
  * @brief Return true if the status is unexpected, false otherwise
-*/
-static bool process_check_unexpected(Process& process, int status) {
+ */
+static bool process_check_unexpected(Process &process, int status) {
   for (const auto &elem : process.get_program_config().get_exitcodes()) {
     if (elem == status) {
       return false;
