@@ -2,7 +2,6 @@
 #define PROGRAM_CONFIG_HPP
 
 #include <cstdint>
-#include <string>
 #include <vector>
 #include <yaml-cpp/yaml.h>
 extern "C" {
