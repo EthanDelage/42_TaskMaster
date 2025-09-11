@@ -6,7 +6,8 @@
 #include <sstream>
 
 Client::Client(std::string prompt_string)
-    : _prompt_string(std::move(prompt_string)), _is_running(true) {
+    : _prompt_string(std::move(prompt_string)), _is_running(true),
+      _socket(SOCKET_PATH_NAME) {
   add_command({"status",
                {},
                "Show the status of all programs from the config file",
@@ -42,6 +43,7 @@ Client::Client(std::string prompt_string)
        "Show this help message",
        [this](const std::vector<std::string> &args) { print_usage(args); }});
   _usage_max_len = get_usage_max_len();
+  _socket.connect();
 }
 
 void Client::loop() {
