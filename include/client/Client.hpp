@@ -1,6 +1,8 @@
 #ifndef CLIENT_HPP
 #define CLIENT_HPP
 
+#include "UnixSocketClient.hpp"
+
 #include <functional>
 #include <string>
 #include <vector>
@@ -32,6 +34,7 @@ private:
   size_t _usage_max_len;
   std::string _prompt_string;
   bool _is_running;
+  UnixSocketClient _socket;
 
   void add_command(const client_command_t &command);
   size_t get_usage_max_len() const;
