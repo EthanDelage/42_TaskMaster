@@ -2,6 +2,7 @@ add_library(common
   STATIC
   utils.cpp
   split.cpp
+  UnixSocket.cpp
 )
 
 target_compile_options(common
