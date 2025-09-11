@@ -4,6 +4,7 @@ add_executable(server
         Taskmaster.cpp
         config/Config.cpp
         config/ProgramConfig.cpp
+        UnixSocketServer.cpp
 )
 
 include(FetchContent)
