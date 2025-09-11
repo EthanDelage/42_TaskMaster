@@ -9,7 +9,7 @@
 class Taskmaster {
 public:
   explicit Taskmaster(Config config);
-  int start();
+  int autostart_processes();
   void loop();
 
 private:

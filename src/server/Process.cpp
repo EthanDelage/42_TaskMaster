@@ -1,6 +1,8 @@
 #include "server/Process.hpp"
 
 #include "common/utils.hpp"
+#include <chrono>
+#include <iostream>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -9,15 +11,18 @@ extern char **environ; // envp
 Process::Process(ProgramConfig &program_config)
     : _program_config(std::move(program_config)),
       _cmd_path(get_cmd_path(_program_config.get_cmd()[0])), _pid(-1),
-      _state(State::IDLE) {}
+      _startretries(0) {}
 
 int Process::start() {
+  std::cout << "[Taskmaster] Starting " << _program_config.get_name() << " ..."
+            << std::endl;
   _pid = fork();
   if (_pid == -1) {
     perror("fork");
     return -1;
   }
   if (_pid > 0) {
+    _start_time = std::chrono::steady_clock::now();
     return 0;
   }
   if (execve(_cmd_path.c_str(), _program_config.get_cmd(), environ) == -1) {
@@ -51,7 +56,15 @@ pid_t Process::get_pid() const { return _pid; }
 
 ProgramConfig &Process::get_program_config() { return _program_config; }
 
-State Process::get_state() const { return _state; }
+std::chrono::steady_clock::time_point Process::get_start_time() const {
+  return _start_time;
+}
+
+unsigned long Process::get_startretries() const { return _startretries; }
+
+void Process::set_startretries(unsigned long startretries) {
+  _startretries = startretries;
+}
 
 std::string Process::get_cmd_path(const std::string &cmd) {
   if (cmd.find('/') != std::string::npos) {
