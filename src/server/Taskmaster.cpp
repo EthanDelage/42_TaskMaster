@@ -16,8 +16,9 @@ extern "C" {
 static void sigchld_handler(int);
 
 volatile sig_atomic_t sigchld_received_g = 0;
-int sigchld_pipe_g[2]; // This pipe needs to be deleted but for now it is used
-                       // to poll until UNIX sockets gets implemented
+int sigchld_pipe_g[2];
+// TODO: This pipe needs to be deleted but for now it is used to poll until UNIX
+// sockets gets implemented
 
 Taskmaster::Taskmaster(Config config) {
   std::vector<ProgramConfig> program_configs = config.parse();
@@ -55,7 +56,6 @@ void Taskmaster::loop() {
     if (result == -1) {
       if (errno == EINTR) {
         reap_processes();
-        errno = 0;
       } else {
         perror(NULL);
         throw std::runtime_error("poll()");
@@ -87,7 +87,7 @@ void Taskmaster::reap_processes() {
               << std::endl;
     auto it = _running_processes.find(pid);
     if (it == _running_processes.end()) {
-      std::cout << "Process " << pid << " not found in _launched_processes"
+      std::cerr << "Process " << pid << " not found in _launched_processes"
                 << std::endl;
       // This error should never occur, if it does something went wrong when
       // adding processes to _running_processes
