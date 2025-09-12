@@ -12,6 +12,7 @@ public:
   int start();
   int stop(int sig);
   int restart(int sig);
+  void redirect_outputs() const;
 
   pid_t get_pid() const;
   ProgramConfig &get_program_config();
