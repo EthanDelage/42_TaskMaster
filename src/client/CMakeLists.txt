@@ -1,6 +1,6 @@
 add_executable(taskmasterctl
         main.cpp
-        Client.cpp
+        TaskmasterCtl.cpp
         UnixSocketClient.cpp
 )
 

@@ -15,9 +15,9 @@ struct client_command_s {
   std::function<void(const std::vector<std::string> &)> func;
 };
 
-class Client {
+class TaskmasterCtl {
 public:
-  explicit Client(std::string prompt_string);
+  explicit TaskmasterCtl(std::string prompt_string);
   void loop();
   void run_command(const std::string &command_line);
 

@@ -1,11 +1,11 @@
-#include "client/Client.hpp"
+#include "client/TaskmasterCtl.hpp"
 
 #include <common/utils.hpp>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 
-Client::Client(std::string prompt_string)
+TaskmasterCtl::TaskmasterCtl(std::string prompt_string)
     : _prompt_string(std::move(prompt_string)), _is_running(true),
       _socket(SOCKET_PATH_NAME) {
   add_command({"status",
@@ -55,7 +55,7 @@ Client::Client(std::string prompt_string)
   _socket.connect();
 }
 
-void Client::loop() {
+void TaskmasterCtl::loop() {
   std::string input;
 
   print_header();
@@ -68,7 +68,7 @@ void Client::loop() {
   }
 }
 
-void Client::run_command(const std::string &command_line) {
+void TaskmasterCtl::run_command(const std::string &command_line) {
   const std::vector<std::string> args = split(command_line, ' ');
   if (args.empty()) {
     return;
@@ -85,7 +85,7 @@ void Client::run_command(const std::string &command_line) {
   }
 }
 
-void Client::send_command_and_print(
+void TaskmasterCtl::send_command_and_print(
     const std::vector<std::string> &args) const {
   if (_socket.send(join(args, " ")) == -1) {
     throw std::runtime_error(std::string("send") + strerror(errno));
@@ -94,12 +94,12 @@ void Client::send_command_and_print(
   receive_response();
 }
 
-void Client::quit(const std::vector<std::string> &args) {
+void TaskmasterCtl::quit(const std::vector<std::string> &args) {
   send_command_and_print(args);
   _is_running = false;
 }
 
-void Client::print_usage(const std::vector<std::string> &) const {
+void TaskmasterCtl::print_usage(const std::vector<std::string> &) const {
   std::cout << "Available commands:" << std::endl;
   for (const auto &[cmd_name, cmd] : _commands_map) {
     std::ostringstream left_part;
@@ -113,7 +113,7 @@ void Client::print_usage(const std::vector<std::string> &) const {
   }
 }
 
-void Client::print_header() {
+void TaskmasterCtl::print_header() {
   std::cout << "=====================================\n";
   std::cout << "         Taskmaster Shell v1.0       \n";
   std::cout << "=====================================\n";
@@ -122,7 +122,7 @@ void Client::print_header() {
                "programs.\n\n";
 }
 
-void Client::receive_response() const {
+void TaskmasterCtl::receive_response() const {
   try {
     const std::string feedback = _socket.receive();
     std::cout << feedback << std::endl;
@@ -131,11 +131,11 @@ void Client::receive_response() const {
   }
 }
 
-void Client::add_command(const client_command_t &command) {
+void TaskmasterCtl::add_command(const client_command_t &command) {
   _commands_map.emplace(command.name, command);
 }
 
-size_t Client::get_usage_max_len() const {
+size_t TaskmasterCtl::get_usage_max_len() const {
   size_t max_len = 0;
   for (const auto &[cmd_name, cmd] : _commands_map) {
     size_t len = cmd.name.size();
@@ -147,8 +147,8 @@ size_t Client::get_usage_max_len() const {
   return max_len;
 }
 
-bool Client::is_valid_args(const client_command_t &command,
-                           const std::vector<std::string> &args) {
+bool TaskmasterCtl::is_valid_args(const client_command_t &command,
+                                  const std::vector<std::string> &args) {
   if (command.args.size() + 1 != args.size()) {
     std::cerr << "Invalid number of arguments" << std::endl
               << "Usage: " << command.name;
