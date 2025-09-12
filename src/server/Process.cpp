@@ -3,6 +3,7 @@
 #include "common/utils.hpp"
 #include <chrono>
 #include <iostream>
+#include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
