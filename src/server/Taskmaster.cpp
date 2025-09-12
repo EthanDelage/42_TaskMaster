@@ -146,14 +146,16 @@ static bool process_check_restart(Process &process, int exitcode,
     std::cout << "[Taskmaster] process " << process.get_pid()
               << " autorestart: false" << std::endl;
     return false;
+  case AutoRestart::True:
     std::cout << "[Taskmaster] process " << process.get_pid()
               << " autorestart: true" << std::endl;
-  case AutoRestart::True:
     return true;
   case AutoRestart::Unexpected:
     std::cout << "[Taskmaster] process " << process.get_pid()
               << " autorestart: unexpected" << std::endl;
     return process_check_unexpected(process, exitcode);
+  default:
+    throw std::runtime_error("process_check_restart(): unexpected value");
   }
 }
 

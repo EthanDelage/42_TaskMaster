@@ -2,10 +2,15 @@
 
 #include "common/utils.hpp"
 #include <chrono>
+#include <cstring>
 #include <iostream>
 #include <signal.h>
+extern "C" {
+#include <fcntl.h>
 #include <sys/wait.h>
-#include <unistd.h>
+}
+
+static void redirect_output(std::string path, int current_output);
 
 extern char **environ; // envp
 
@@ -23,9 +28,12 @@ int Process::start() {
     return -1;
   }
   if (_pid > 0) {
+    // parent process
     _start_time = std::chrono::steady_clock::now();
     return 0;
   }
+  // child process
+  redirect_outputs();
   if (execve(_cmd_path.c_str(), _program_config.get_cmd(), environ) == -1) {
     perror("execve");
     return -1;
@@ -85,4 +93,24 @@ std::string Process::get_cmd_path(const std::string &cmd) {
     }
   }
   throw std::runtime_error("Error: command not found: " + cmd);
+}
+
+void Process::redirect_outputs() const {
+  redirect_output(_program_config.get_stdout(), STDOUT_FILENO);
+  redirect_output(_program_config.get_stderr(), STDERR_FILENO);
+}
+
+static void redirect_output(std::string path, int current_output) {
+  int new_output;
+
+  new_output = path.empty()
+                   ? open("/dev/null", O_WRONLY)
+                   : open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (new_output == -1) {
+    throw std::runtime_error(std::string("open") + strerror(errno));
+  }
+  if (dup2(new_output, current_output) == -1) {
+    throw std::runtime_error(std::string("dup2") + strerror(errno));
+  }
+  close(new_output);
 }
