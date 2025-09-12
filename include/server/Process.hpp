@@ -12,7 +12,8 @@ public:
   int start();
   int stop(int sig);
   int restart(int sig);
-  void redirect_outputs() const;
+  void setup_outputs() const;
+  void setup_workingdir() const;
 
   pid_t get_pid() const;
   ProgramConfig &get_program_config();

@@ -33,7 +33,8 @@ int Process::start() {
     return 0;
   }
   // child process
-  redirect_outputs();
+  setup_outputs();
+  setup_workingdir();
   if (execve(_cmd_path.c_str(), _program_config.get_cmd(), environ) == -1) {
     perror("execve");
     return -1;
@@ -95,9 +96,18 @@ std::string Process::get_cmd_path(const std::string &cmd) {
   throw std::runtime_error("Error: command not found: " + cmd);
 }
 
-void Process::redirect_outputs() const {
+void Process::setup_outputs() const {
   redirect_output(_program_config.get_stdout(), STDOUT_FILENO);
   redirect_output(_program_config.get_stderr(), STDERR_FILENO);
+}
+
+void Process::setup_workingdir() const {
+  if (_program_config.get_workingdir().empty()) {
+    return;
+  }
+  if (chdir(_program_config.get_workingdir().c_str()) == -1) {
+    throw std::runtime_error(std::string("chdir") + strerror(errno));
+  }
 }
 
 static void redirect_output(std::string path, int current_output) {
