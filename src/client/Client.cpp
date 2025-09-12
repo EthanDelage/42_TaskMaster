@@ -11,24 +11,33 @@ Client::Client(std::string prompt_string)
   add_command({"status",
                {},
                "Show the status of all programs from the config file",
-               [this](const std::vector<std::string> &args) { status(args); }});
+               [this](const std::vector<std::string> &args) {
+                 send_command_and_print(args);
+               }});
   add_command({"start",
                {"<program_name>"},
                "Start the specified program",
-               [this](const std::vector<std::string> &args) { start(args); }});
+               [this](const std::vector<std::string> &args) {
+                 send_command_and_print(args);
+               }});
   add_command({"stop",
                {"<program_name>"},
                "Stop the specified program",
-               [this](const std::vector<std::string> &args) { stop(args); }});
-  add_command(
-      {"restart",
-       {"<program_name>"},
-       "Restart the specified program",
-       [this](const std::vector<std::string> &args) { restart(args); }});
+               [this](const std::vector<std::string> &args) {
+                 send_command_and_print(args);
+               }});
+  add_command({"restart",
+               {"<program_name>"},
+               "Restart the specified program",
+               [this](const std::vector<std::string> &args) {
+                 send_command_and_print(args);
+               }});
   add_command({"reload",
                {},
                "Reload the configuration file without stopping the shell",
-               [this](const std::vector<std::string> &args) { reload(args); }});
+               [this](const std::vector<std::string> &args) {
+                 send_command_and_print(args);
+               }});
   add_command({"quit",
                {},
                "Same as 'exit'",
@@ -55,18 +64,17 @@ void Client::loop() {
     if (!std::getline(std::cin, input)) {
       break; // EOF or error
     }
-
-    std::vector<std::string> args = split(input, ' ');
-    if (args.empty()) {
-      continue;
-    }
-    run_command(args);
+    run_command(input);
   }
 }
 
-void Client::run_command(const std::vector<std::string> &args) {
+void Client::run_command(const std::string &command_line) {
+  const std::vector<std::string> args = split(command_line, ' ');
+  if (args.empty()) {
+    return;
+  }
   const std::string &cmd_name = args[0];
-  auto cmd = _commands_map.find(cmd_name);
+  const auto cmd = _commands_map.find(cmd_name);
 
   if (cmd != _commands_map.end()) {
     if (is_valid_args(cmd->second, args)) {
@@ -77,35 +85,18 @@ void Client::run_command(const std::vector<std::string> &args) {
   }
 }
 
-void Client::status(const std::vector<std::string> &) {
-  std::cout << "Status" << std::endl;
+void Client::send_command_and_print(
+    const std::vector<std::string> &args) const {
+  if (_socket.send(join(args, " ")) == -1) {
+    throw std::runtime_error(std::string("send") + strerror(errno));
+  }
+  std::cout << "message sent" << std::endl;
+  print_feedback();
 }
 
-void Client::start(const std::vector<std::string> &args) {
-  std::cout << "Starting process: " << args[1] << std::endl;
-}
-
-void Client::stop(const std::vector<std::string> &args) {
-  std::cout << "Stopping process: " << args[1] << std::endl;
-}
-
-void Client::restart(const std::vector<std::string> &args) {
-  std::cout << "Restarting process: " << args[1] << std::endl;
-}
-
-void Client::reload(const std::vector<std::string> &) {
-  std::cout << "Reloading config" << std::endl;
-}
-
-void Client::quit(const std::vector<std::string> &) { _is_running = false; }
-
-void Client::print_header() {
-  std::cout << "=====================================\n";
-  std::cout << "         Taskmaster Shell v1.0       \n";
-  std::cout << "=====================================\n";
-  std::cout << "Type 'help' to list all available commands.\n";
-  std::cout << "Press Ctrl-D or Ctrl-C to quit the shell without stopping "
-               "programs.\n\n";
+void Client::quit(const std::vector<std::string> &args) {
+  send_command_and_print(args);
+  _is_running = false;
 }
 
 void Client::print_usage(const std::vector<std::string> &) const {
@@ -119,6 +110,24 @@ void Client::print_usage(const std::vector<std::string> &) const {
     std::cout << "  " << std::left
               << std::setw(static_cast<int>(_usage_max_len) + 2)
               << left_part.str() << cmd.doc << std::endl;
+  }
+}
+
+void Client::print_header() {
+  std::cout << "=====================================\n";
+  std::cout << "         Taskmaster Shell v1.0       \n";
+  std::cout << "=====================================\n";
+  std::cout << "Type 'help' to list all available commands.\n";
+  std::cout << "Press Ctrl-D or Ctrl-C to quit the shell without stopping "
+               "programs.\n\n";
+}
+
+void Client::print_feedback() const {
+  try {
+    const std::string feedback = _socket.receive();
+    std::cout << feedback << std::endl;
+  } catch (const std::runtime_error &e) {
+    std::cerr << e.what() << std::endl;
   }
 }
 
