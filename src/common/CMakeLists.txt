@@ -1,7 +1,7 @@
 add_library(common
   STATIC
-  utils.cpp
-  split.cpp
+  utils/join.cpp
+  utils/split.cpp
   UnixSocket.cpp
 )
 
