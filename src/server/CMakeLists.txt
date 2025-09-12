@@ -24,7 +24,6 @@ FetchContent_MakeAvailable(yaml-cpp)
 target_compile_options(server
   PRIVATE
   ${CXX_FLAGS}
-  -g3
 )
 
 target_link_libraries(server
