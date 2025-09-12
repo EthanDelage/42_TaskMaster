@@ -16,6 +16,7 @@ jobs:
       # Install clang-format (choose version you want, e.g., clang-format-14)
       - name: Install clang-format
         run: |
+          sudo apt remove llvm-18-dev
           wget -O libclang-cpp18.deb https://apt.llvm.org/jammy/pool/main/l/llvm-toolchain-18/libclang-cpp18_18.1.8~%2B%2B20240731024944%2B3b5b5c1ec4a3-1~exp1~20240731145000.144_amd64.deb
           wget -O libllvm18.deb https://apt.llvm.org/jammy/pool/main/l/llvm-toolchain-18/libllvm18_18.1.8~%2B%2B20240731024944%2B3b5b5c1ec4a3-1~exp1~20240731145000.144_amd64.deb
           wget -O clang-format-18.deb https://apt.llvm.org/jammy/pool/main/l/llvm-toolchain-18/clang-format-18_18.1.8~%2B%2B20240731024944%2B3b5b5c1ec4a3-1~exp1~20240731145000.144_amd64.deb
