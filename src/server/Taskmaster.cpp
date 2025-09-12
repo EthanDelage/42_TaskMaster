@@ -72,8 +72,7 @@ void Taskmaster::loop() {
 int Taskmaster::autostart_processes() {
   for (Process &process : _processes) {
     if (process.get_program_config().get_autostart()) {
-      process.start();
-      _running_processes.emplace(process.get_pid(), process);
+      start_process(process);
     }
   }
   return 0;
@@ -92,7 +91,7 @@ void Taskmaster::reap_processes() {
          (pid = waitpid(-1, &status, WNOHANG)) > 0) {
     status = WEXITSTATUS(status);
     std::cout << "[Taskmaster] Process " << pid << " exited with status " << status << std::endl;
-    process_
+    process_termination_handler(pid, status);
   }
   if (pid == -1) {
     perror("waitpid()");
@@ -116,7 +115,7 @@ void Taskmaster::process_termination_handler(pid_t pid, int exitcode) {
         std::chrono::steady_clock::now() - it->second.get_start_time())
     .count();
   _running_processes.erase(it);
-  if (process_check_restart(it->second, status, runtime)) {
+  if (process_check_restart(it->second, exitcode, runtime)) {
     start_process(it->second);
   }
 }
