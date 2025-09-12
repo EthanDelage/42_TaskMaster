@@ -2,15 +2,8 @@
 #define PROCESS_HPP
 
 #include "server/config/ProgramConfig.hpp"
+#include <chrono>
 #include <string>
-
-enum class State {
-  IDLE,
-  RUNNING,
-  STOPPING,
-  FINISHED,
-  CRASHED,
-};
 
 class Process {
 public:
@@ -22,7 +15,10 @@ public:
 
   pid_t get_pid() const;
   ProgramConfig &get_program_config();
-  State get_state() const;
+  std::chrono::steady_clock::time_point get_start_time() const;
+  unsigned long get_startretries() const;
+
+  void set_startretries(unsigned long startretries);
 
 private:
   static std::string get_cmd_path(const std::string &cmd);
@@ -30,7 +26,8 @@ private:
   ProgramConfig _program_config;
   std::string _cmd_path;
   pid_t _pid;
-  State _state;
+  std::chrono::steady_clock::time_point _start_time;
+  unsigned long _startretries;
 };
 
 #endif // PROCESS_HPP

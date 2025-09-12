@@ -120,7 +120,7 @@ void ProgramConfig::parse_umask(YAML::Node config_node) {
 
 void ProgramConfig::parse_autostart(YAML::Node config_node) {
   _autostart =
-      config_node["autostart"] ? config_node["autostart"].as<bool>() : false;
+      config_node["autostart"] ? config_node["autostart"].as<bool>() : true;
 }
 
 void ProgramConfig::parse_autorestart(YAML::Node config_node) {
