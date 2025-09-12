@@ -79,40 +79,20 @@ int Taskmaster::autostart_processes() {
   return 0;
 }
 
+void Taskmaster::start_process(Process& process) {
+  process.start();
+  _running_processes.emplace(process.get_pid(), process);
+}
+
 void Taskmaster::reap_processes() {
   pid_t pid;
   int status;
-  unsigned long runtime;
 
   while (_running_processes.size() > 0 &&
          (pid = waitpid(-1, &status, WNOHANG)) > 0) {
     status = WEXITSTATUS(status);
-    std::cout << "[Taskmaster] Process " << pid << " exited with status "
-              << status << std::endl;
-    auto it = _running_processes.find(pid);
-    if (it == _running_processes.end()) {
-      std::cerr << "Error: Process " << pid
-                << " not found in _launched_processes" << std::endl;
-      // This error should never occur, if it does something went wrong when
-      // adding processes to _running_processes
-      throw std::runtime_error("trying to reap a process whose pid is not "
-                               "found in _running_processes");
-    }
-
-    runtime =
-        std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::steady_clock::now() - it->second.get_start_time())
-            .count();
-    std::cout << "[Taskmaster] Process " << pid << " runtime: " << runtime
-              << std::endl;
-
-    _running_processes.erase(it);
-    if (process_check_restart(it->second, status, runtime)) {
-      it->second.start();
-      _running_processes.emplace(it->second.get_pid(), it->second);
-    }
-    std::cout << "[Taskmaster] Active processes: " << _running_processes.size()
-              << std::endl;
+    std::cout << "[Taskmaster] Process " << pid << " exited with status " << status << std::endl;
+    process_
   }
   if (pid == -1) {
     perror("waitpid()");
@@ -120,7 +100,28 @@ void Taskmaster::reap_processes() {
   }
 }
 
-static bool process_check_restart(Process &process, int status,
+void Taskmaster::process_termination_handler(pid_t pid, int exitcode) {
+  unsigned long runtime;
+  auto it = _running_processes.find(pid);
+  if (it == _running_processes.end()) {
+    std::cerr << "Error: Process " << pid
+      << " not found in _launched_processes" << std::endl;
+    // This error should never occur, if it does something went wrong when
+    // adding/deleting running processes
+    throw std::runtime_error("trying to reap a process whose pid is not "
+        "found in _running_processes");
+  }
+  runtime =
+    std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::steady_clock::now() - it->second.get_start_time())
+    .count();
+  _running_processes.erase(it);
+  if (process_check_restart(it->second, status, runtime)) {
+    start_process(it->second);
+  }
+}
+
+static bool process_check_restart(Process &process, int exitcode,
                                   unsigned long runtime) {
   if (runtime < process.get_program_config().get_starttime()) {
     // Process is unsuccessfully started
@@ -153,7 +154,7 @@ static bool process_check_restart(Process &process, int status,
   case AutoRestart::Unexpected:
     std::cout << "[Taskmaster] process " << process.get_pid()
               << " autorestart: unexpected" << std::endl;
-    return process_check_unexpected(process, status);
+    return process_check_unexpected(process, exitcode);
   }
 }
 
