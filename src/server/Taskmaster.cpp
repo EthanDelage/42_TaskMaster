@@ -78,7 +78,7 @@ int Taskmaster::autostart_processes() {
   return 0;
 }
 
-void Taskmaster::start_process(Process& process) {
+void Taskmaster::start_process(Process &process) {
   process.start();
   _running_processes.emplace(process.get_pid(), process);
 }
@@ -90,7 +90,8 @@ void Taskmaster::reap_processes() {
   while (_running_processes.size() > 0 &&
          (pid = waitpid(-1, &status, WNOHANG)) > 0) {
     status = WEXITSTATUS(status);
-    std::cout << "[Taskmaster] Process " << pid << " exited with status " << status << std::endl;
+    std::cout << "[Taskmaster] Process " << pid << " exited with status "
+              << status << std::endl;
     process_termination_handler(pid, status);
   }
   if (pid == -1) {
@@ -103,17 +104,16 @@ void Taskmaster::process_termination_handler(pid_t pid, int exitcode) {
   unsigned long runtime;
   auto it = _running_processes.find(pid);
   if (it == _running_processes.end()) {
-    std::cerr << "Error: Process " << pid
-      << " not found in _launched_processes" << std::endl;
+    std::cerr << "Error: Process " << pid << " not found in _launched_processes"
+              << std::endl;
     // This error should never occur, if it does something went wrong when
     // adding/deleting running processes
     throw std::runtime_error("trying to reap a process whose pid is not "
-        "found in _running_processes");
+                             "found in _running_processes");
   }
-  runtime =
-    std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::steady_clock::now() - it->second.get_start_time())
-    .count();
+  runtime = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - it->second.get_start_time())
+                .count();
   _running_processes.erase(it);
   if (process_check_restart(it->second, exitcode, runtime)) {
     start_process(it->second);
