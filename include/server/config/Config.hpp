@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#define PROGRAM_NAME_MAX_LENGTH 64
+
 class Config {
 public:
   explicit Config(std::string config_path);
