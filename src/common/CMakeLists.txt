@@ -3,6 +3,7 @@ add_library(common
   utils/join.cpp
   utils/split.cpp
   UnixSocket.cpp
+  CommandManager.cpp
 )
 
 target_compile_options(common
