@@ -33,7 +33,7 @@ void TaskmasterCtl::run_command(const std::string &command_line) {
 
 void TaskmasterCtl::send_command_and_print(
     const std::vector<std::string> &args) const {
-  if (_socket.send(join(args, " ")) == -1) {
+  if (_socket.send(join(args, " ") + '\n') == -1) {
     throw std::runtime_error(std::string("send") + strerror(errno));
   }
   std::cout << "message sent" << std::endl;
