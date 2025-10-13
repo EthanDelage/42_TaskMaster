@@ -20,21 +20,27 @@ static bool process_check_restart(Process &process, int status,
                                   unsigned long runtime);
 static bool process_check_unexpected(Process &process, int status);
 static void sigchld_handler(int);
+static void sighup_handler(int);
 
-volatile sig_atomic_t sigchld_received_g = 0;
+volatile sig_atomic_t sigchld_flag_g = 0;
+volatile sig_atomic_t sighup_flag_g = 0;
 int sigchld_pipe_g[2]; // This pipe needs to be deleted but for now it is used
                        // to poll until UNIX sockets gets implemented
 
-Taskmaster::Taskmaster(Config config) {
-  std::vector<ProgramConfig> program_configs = config.parse();
+Taskmaster::Taskmaster(Config config) : _config(config){
+  std::vector<ProgramConfig> program_configs = _config.parse();
   struct sigaction sa;
 
   pipe(sigchld_pipe_g);
 
-  sa.sa_handler = sigchld_handler;
   sigemptyset(&sa.sa_mask);
   sa.sa_flags = SA_RESTART;
+  sa.sa_handler = sigchld_handler;
   if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+    throw std::runtime_error("sigaction()");
+  }
+  sa.sa_handler = sighup_handler;
+  if (sigaction(SIGHUP, &sa, NULL) == -1) {
     throw std::runtime_error("sigaction()");
   }
   for (auto &program_config : program_configs) {
@@ -59,8 +65,7 @@ void Taskmaster::loop() {
     result = ppoll(fds, 1, NULL, &origin_mask);
     if (result == -1) {
       if (errno == EINTR) {
-        reap_processes();
-        errno = 0;
+        signal_interruption_handler();
       } else {
         perror(NULL);
         throw std::runtime_error("poll()");
@@ -100,6 +105,11 @@ void Taskmaster::reap_processes() {
   }
 }
 
+void Taskmaster::update_config() {
+  std::vector<ProgramConfig> new_program_configs = _config.parse();
+
+}
+
 void Taskmaster::process_termination_handler(pid_t pid, int exitcode) {
   unsigned long runtime;
   auto it = _running_processes.find(pid);
@@ -117,6 +127,17 @@ void Taskmaster::process_termination_handler(pid_t pid, int exitcode) {
   _running_processes.erase(it);
   if (process_check_restart(it->second, exitcode, runtime)) {
     start_process(it->second);
+  }
+}
+
+void Taskmaster::signal_interruption_handler(void) {
+  if (sigchld_flag_g) {
+    sigchld_flag_g = 0;
+    reap_processes();
+  }
+  if (sighup_flag_g) {
+    sighup_flag_g = 0;
+    
   }
 }
 
@@ -171,4 +192,6 @@ static bool process_check_unexpected(Process &process, int status) {
   return true;
 }
 
-static void sigchld_handler(int) { sigchld_received_g = 1; }
+static void sigchld_handler(int) { sigchld_flag_g = 1; }
+
+static void sighup_handler(int) { sigchld_flag_g = 1; }

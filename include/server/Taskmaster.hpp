@@ -13,12 +13,15 @@ public:
   void loop();
 
 private:
-  std::vector<Process> _processes;
+  Config _config;
+  std::unordered_map<std::string, Process> _processes;
   std::unordered_map<pid_t, Process &> _running_processes;
 
   void start_process(Process &process);
   void reap_processes();
   void process_termination_handler(pid_t pid, int exitcode);
+  void sigchld_process(void);
+  void update_config();
 };
 
 #endif // TASKMASTER_HPP
