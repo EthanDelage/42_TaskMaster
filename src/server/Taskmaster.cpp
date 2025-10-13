@@ -4,14 +4,11 @@
 
 #include <chrono>
 #include <csignal>
-#include <cstdlib>
 #include <iostream>
 #include <stdexcept>
-extern "C" {
-#include <poll.h>
+#include <sys/socket.h>
 #include <sys/wait.h>
 #include <unistd.h>
-}
 
 #define PIPE_READ 0
 #define PIPE_WRITE 1
@@ -25,12 +22,14 @@ volatile sig_atomic_t sigchld_received_g = 0;
 int sigchld_pipe_g[2]; // This pipe needs to be deleted but for now it is used
                        // to poll until UNIX sockets gets implemented
 
-Taskmaster::Taskmaster(Config config) {
+Taskmaster::Taskmaster(Config config)
+    : _command_manager(get_commands_callback()), _socket(SOCKET_PATH_NAME) {
   std::vector<ProgramConfig> program_configs = config.parse();
   struct sigaction sa;
 
   pipe(sigchld_pipe_g);
 
+  _poll_fds.push_back({_socket.get_fd(), POLLIN, 0});
   sa.sa_handler = sigchld_handler;
   sigemptyset(&sa.sa_mask);
   sa.sa_flags = SA_RESTART;
@@ -43,28 +42,29 @@ Taskmaster::Taskmaster(Config config) {
 }
 
 void Taskmaster::loop() {
-  struct pollfd fds[1];
   sigset_t mask;
   sigset_t origin_mask;
   int result;
 
-  fds[0].fd = sigchld_pipe_g[PIPE_READ];
-  fds[0].events = POLLIN;
   sigemptyset(&mask);
   sigaddset(&mask, SIGCHLD);
   sigprocmask(SIG_BLOCK, &mask, &origin_mask);
 
+  if (_socket.listen(BACKLOG) == -1) {
+    return;
+  }
   autostart_processes();
   while (true) {
-    result = ppoll(fds, 1, NULL, &origin_mask);
+    result = ppoll(_poll_fds.data(), _poll_fds.size(), NULL, &origin_mask);
     if (result == -1) {
       if (errno == EINTR) {
         reap_processes();
-        errno = 0;
       } else {
         perror(NULL);
         throw std::runtime_error("poll()");
       }
+    } else {
+      process_poll_fds();
     }
   }
 }
@@ -84,10 +84,10 @@ void Taskmaster::start_process(Process &process) {
 }
 
 void Taskmaster::reap_processes() {
-  pid_t pid;
+  pid_t pid = 0;
   int status;
 
-  while (_running_processes.size() > 0 &&
+  while (!_running_processes.empty() &&
          (pid = waitpid(-1, &status, WNOHANG)) > 0) {
     status = WEXITSTATUS(status);
     std::cout << "[Taskmaster] Process " << pid << " exited with status "
@@ -157,6 +157,89 @@ static bool process_check_restart(Process &process, int exitcode,
   default:
     throw std::runtime_error("process_check_restart(): unexpected value");
   }
+}
+
+void Taskmaster::process_poll_fds() {
+  auto it = ++_poll_fds.begin(); // ignore first socket (server_socket)
+  std::string cmd_line;
+
+  while (it != _poll_fds.end()) {
+    if (it->revents == 0) {
+      ++it;
+    } else if (it->revents & (POLLERR | POLLHUP | POLLRDHUP)) {
+      close(it->fd);
+      it = _poll_fds.erase(it);
+    } else if (it->revents & POLLIN) {
+      try {
+        cmd_line = read_command(it->fd);
+      } catch (const std::runtime_error &) {
+        close(it->fd);
+        it = _poll_fds.erase(it);
+        continue;
+      }
+      _command_manager.run_command(cmd_line);
+      ++it;
+    }
+  }
+  handle_connection();
+}
+
+std::string Taskmaster::read_command(int fd) {
+  char buffer[1024];
+  std::string buffer_str;
+  ssize_t ret;
+  size_t endl_pos;
+
+  ret = read(fd, buffer, sizeof(buffer));
+  if (ret == -1) {
+    throw std::runtime_error("read_command()");
+  }
+  if (ret == 0) {
+    throw std::runtime_error("client disconnected");
+  }
+  buffer_str = std::string(buffer, ret);
+  endl_pos = buffer_str.find('\n');
+  if (endl_pos != std::string::npos) {
+    buffer_str.erase(endl_pos);
+  }
+  return buffer_str;
+}
+
+void Taskmaster::handle_connection() {
+  if (_poll_fds[0].revents & POLLIN) {
+    const int client_fd = _socket.accept_client();
+    if (client_fd == -1) {
+      std::cerr << "[Taskmaster] accept_client() failed" << std::endl;
+      return;
+    }
+    _poll_fds.push_back({client_fd, POLLIN | POLLRDHUP, 0});
+  }
+}
+
+std::unordered_map<std::string, cmd_callback_t>
+Taskmaster::get_commands_callback() {
+  return {
+      {CMD_STATUS_STR,
+       [this](const std::vector<std::string> &args) { callback(args); }},
+      {CMD_START_STR,
+       [this](const std::vector<std::string> &args) { callback(args); }},
+      {CMD_STOP_STR,
+       [this](const std::vector<std::string> &args) { callback(args); }},
+      {CMD_RESTART_STR,
+       [this](const std::vector<std::string> &args) { callback(args); }},
+      {CMD_RELOAD_STR,
+       [this](const std::vector<std::string> &args) { callback(args); }},
+      {CMD_QUIT_STR,
+       [this](const std::vector<std::string> &args) { callback(args); }},
+      {CMD_EXIT_STR,
+       [this](const std::vector<std::string> &args) { callback(args); }},
+      {CMD_HELP_STR,
+       [this](const std::vector<std::string> &args) { callback(args); }},
+  };
+}
+
+void Taskmaster::callback(const std::vector<std::string> &args) {
+  std::cout << "[Taskmaster] received: " << args[0] << std::endl;
 }
 
 /*
