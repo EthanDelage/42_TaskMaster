@@ -19,15 +19,11 @@ static bool process_check_unexpected(Process &process, int status);
 static void sigchld_handler(int);
 
 volatile sig_atomic_t sigchld_received_g = 0;
-int sigchld_pipe_g[2]; // This pipe needs to be deleted but for now it is used
-                       // to poll until UNIX sockets gets implemented
 
 Taskmaster::Taskmaster(Config config)
     : _command_manager(get_commands_callback()), _socket(SOCKET_PATH_NAME) {
   std::vector<ProgramConfig> program_configs = config.parse();
   struct sigaction sa;
-
-  pipe(sigchld_pipe_g);
 
   _poll_fds.push_back({_socket.get_fd(), POLLIN, 0});
   sa.sa_handler = sigchld_handler;
