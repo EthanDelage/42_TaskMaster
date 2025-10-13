@@ -148,7 +148,8 @@ void ProgramConfig::parse_env(YAML::Node config_node) {
   }
 
   for (const auto &entry : config_node["env"]) {
-    _env.emplace_back(entry.first.as<std::string>(), entry.second.as<std::string>());
+    _env.emplace_back(entry.first.as<std::string>(),
+                      entry.second.as<std::string>());
   }
 }
 
@@ -234,7 +235,10 @@ bool ProgramConfig::get_autostart() const { return _autostart; }
 
 AutoRestart ProgramConfig::get_autorestart() const { return _autorestart; }
 
-std::vector<std::pair<std::string, std::string>> ProgramConfig::get_env() const { return _env; }
+std::vector<std::pair<std::string, std::string>>
+ProgramConfig::get_env() const {
+  return _env;
+}
 
 std::vector<uint8_t> ProgramConfig::get_exitcodes() const { return _exitcodes; }
 
