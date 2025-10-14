@@ -19,8 +19,10 @@ std::vector<ProgramConfig> Config::parse() const {
   for (const auto &program : root["programs"]) {
     program_name = program.first.as<std::string>();
     if (is_valid_program_name(program_name) == false) {
-      throw std::runtime_error("Config: programs names must contain only "
-                               "letters, numbers and underscores");
+      throw std::runtime_error(
+          "Config: programs names must contain only letters, numbers and "
+          "underscores and must be less than " +
+          std::to_string(PROGRAM_NAME_MAX_LENGTH) + "characters long");
     }
     YAML::Node config_node = program.second;
     // TODO: try catch
@@ -32,7 +34,7 @@ std::vector<ProgramConfig> Config::parse() const {
 }
 
 static bool is_valid_program_name(const std::string &name) {
-  if (name.empty()) {
+  if (name.empty() && name.size() <= PROGRAM_NAME_MAX_LENGTH) {
     return false;
   }
   return std::all_of(name.begin(), name.end(), [](unsigned char c) {

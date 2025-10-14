@@ -6,51 +6,10 @@
 #include <sstream>
 
 TaskmasterCtl::TaskmasterCtl(std::string prompt_string)
-    : _prompt_string(std::move(prompt_string)), _is_running(true),
+    : _command_manager(get_commands_callback()),
+      _prompt_string(std::move(prompt_string)),
+      _is_running(true),
       _socket(SOCKET_PATH_NAME) {
-  add_command({"status",
-               {},
-               "Show the status of all programs from the config file",
-               [this](const std::vector<std::string> &args) {
-                 send_command_and_print(args);
-               }});
-  add_command({"start",
-               {"<program_name>"},
-               "Start the specified program",
-               [this](const std::vector<std::string> &args) {
-                 send_command_and_print(args);
-               }});
-  add_command({"stop",
-               {"<program_name>"},
-               "Stop the specified program",
-               [this](const std::vector<std::string> &args) {
-                 send_command_and_print(args);
-               }});
-  add_command({"restart",
-               {"<program_name>"},
-               "Restart the specified program",
-               [this](const std::vector<std::string> &args) {
-                 send_command_and_print(args);
-               }});
-  add_command({"reload",
-               {},
-               "Reload the configuration file without stopping the shell",
-               [this](const std::vector<std::string> &args) {
-                 send_command_and_print(args);
-               }});
-  add_command({"quit",
-               {},
-               "Same as 'exit'",
-               [this](const std::vector<std::string> &args) { quit(args); }});
-  add_command({"exit",
-               {},
-               "Stop all programs and exit the shell",
-               [this](const std::vector<std::string> &args) { quit(args); }});
-  add_command(
-      {"help",
-       {},
-       "Show this help message",
-       [this](const std::vector<std::string> &args) { print_usage(args); }});
   _usage_max_len = get_usage_max_len();
   _socket.connect();
 }
@@ -69,25 +28,12 @@ void TaskmasterCtl::loop() {
 }
 
 void TaskmasterCtl::run_command(const std::string &command_line) {
-  const std::vector<std::string> args = split(command_line, ' ');
-  if (args.empty()) {
-    return;
-  }
-  const std::string &cmd_name = args[0];
-  const auto cmd = _commands_map.find(cmd_name);
-
-  if (cmd != _commands_map.end()) {
-    if (is_valid_args(cmd->second, args)) {
-      cmd->second.func(args);
-    }
-  } else {
-    std::cerr << "Unknown command: `" << cmd_name << '`' << std::endl;
-  }
+  _command_manager.run_command(command_line);
 }
 
 void TaskmasterCtl::send_command_and_print(
     const std::vector<std::string> &args) const {
-  if (_socket.send(join(args, " ")) == -1) {
+  if (_socket.send(join(args, " ") + '\n') == -1) {
     throw std::runtime_error(std::string("send") + strerror(errno));
   }
   std::cout << "message sent" << std::endl;
@@ -101,7 +47,7 @@ void TaskmasterCtl::quit(const std::vector<std::string> &args) {
 
 void TaskmasterCtl::print_usage(const std::vector<std::string> &) const {
   std::cout << "Available commands:" << std::endl;
-  for (const auto &[cmd_name, cmd] : _commands_map) {
+  for (const auto &[cmd_name, cmd] : _command_manager) {
     std::ostringstream left_part;
     left_part << cmd.name;
     for (const auto &arg : cmd.args) {
@@ -131,13 +77,9 @@ void TaskmasterCtl::receive_response() const {
   }
 }
 
-void TaskmasterCtl::add_command(const client_command_t &command) {
-  _commands_map.emplace(command.name, command);
-}
-
 size_t TaskmasterCtl::get_usage_max_len() const {
   size_t max_len = 0;
-  for (const auto &[cmd_name, cmd] : _commands_map) {
+  for (const auto &[cmd_name, cmd] : _command_manager) {
     size_t len = cmd.name.size();
     for (const auto &arg : cmd.args) {
       len += 1 + arg.size(); // space + arg
@@ -159,4 +101,36 @@ bool TaskmasterCtl::is_valid_args(const client_command_t &command,
     return false;
   }
   return true;
+}
+
+std::unordered_map<std::string, cmd_callback_t>
+TaskmasterCtl::get_commands_callback() {
+  return {
+      {CMD_STATUS_STR,
+       [this](const std::vector<std::string> &args) {
+         send_command_and_print(args);
+       }},
+      {CMD_START_STR,
+       [this](const std::vector<std::string> &args) {
+         send_command_and_print(args);
+       }},
+      {CMD_STOP_STR,
+       [this](const std::vector<std::string> &args) {
+         send_command_and_print(args);
+       }},
+      {CMD_RESTART_STR,
+       [this](const std::vector<std::string> &args) {
+         send_command_and_print(args);
+       }},
+      {CMD_RELOAD_STR,
+       [this](const std::vector<std::string> &args) {
+         send_command_and_print(args);
+       }},
+      {CMD_QUIT_STR,
+       [this](const std::vector<std::string> &args) { quit(args); }},
+      {CMD_EXIT_STR,
+       [this](const std::vector<std::string> &args) { quit(args); }},
+      {CMD_HELP_STR,
+       [this](const std::vector<std::string> &args) { print_usage(args); }},
+  };
 }
