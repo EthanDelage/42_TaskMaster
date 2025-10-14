@@ -13,7 +13,7 @@
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
-static bool process_check_restart(Process &process, int status,
+static bool process_check_restart(Process &process, int exitcode,
                                   unsigned long runtime);
 static bool process_check_unexpected(Process &process, int status);
 static void sigchld_handler(int);
