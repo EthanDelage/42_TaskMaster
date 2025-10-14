@@ -168,16 +168,22 @@ void Taskmaster::process_poll_fds() {
     } else if (it->revents & POLLIN) {
       try {
         cmd_line = read_command(it->fd);
+        run_command(it->fd, cmd_line);
       } catch (const std::runtime_error &) {
         close(it->fd);
         it = _poll_fds.erase(it);
         continue;
       }
-      _command_manager.run_command(cmd_line);
       ++it;
     }
   }
   handle_connection();
+}
+
+void Taskmaster::run_command(const int cmd_requester_fd,
+                             const std::string &cmd_line) {
+  _cmd_requester_fd = cmd_requester_fd;
+  _command_manager.run_command(cmd_line);
 }
 
 std::string Taskmaster::read_command(int fd) {
@@ -236,6 +242,9 @@ Taskmaster::get_commands_callback() {
 
 void Taskmaster::callback(const std::vector<std::string> &args) {
   std::cout << "[Taskmaster] received: " << args[0] << std::endl;
+  if (write(_cmd_requester_fd, args[0].c_str(), args[0].length()) == -1) {
+    throw std::runtime_error("[Taskmaster] write()");
+  }
 }
 
 /*

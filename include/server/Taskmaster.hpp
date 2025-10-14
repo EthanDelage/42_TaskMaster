@@ -23,6 +23,7 @@ private:
   std::vector<Process> _processes;
   UnixSocketServer _socket;
   std::vector<pollfd> _poll_fds;
+  int _cmd_requester_fd{};
   std::unordered_map<pid_t, Process &> _running_processes;
 
   void start_process(Process &process);
@@ -30,6 +31,7 @@ private:
   void process_termination_handler(pid_t pid, int exitcode);
   void process_poll_fds();
   void handle_connection();
+  void run_command(int cmd_requester_fd, const std::string &cmd_line);
   static std::string read_command(int fd);
   std::unordered_map<std::string, cmd_callback_t> get_commands_callback();
   void callback(const std::vector<std::string> &args);
