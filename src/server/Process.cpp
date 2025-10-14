@@ -2,11 +2,13 @@
 
 #include "common/utils.hpp"
 #include <chrono>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <signal.h>
 extern "C" {
 #include <fcntl.h>
+#include <stdlib.h>
 #include <sys/wait.h>
 }
 
@@ -33,6 +35,7 @@ int Process::start() {
     return 0;
   }
   // child process
+  setup_env();
   setup_outputs();
   setup_workingdir();
   if (execve(_cmd_path.c_str(), _program_config.get_cmd(), environ) == -1) {
@@ -94,6 +97,12 @@ std::string Process::get_cmd_path(const std::string &cmd) {
     }
   }
   throw std::runtime_error("Error: command not found: " + cmd);
+}
+
+void Process::setup_env() const {
+  for (std::pair<std::string, std::string> env : _program_config.get_env()) {
+    setenv(env.first.c_str(), env.second.c_str(), 1);
+  }
 }
 
 void Process::setup_outputs() const {

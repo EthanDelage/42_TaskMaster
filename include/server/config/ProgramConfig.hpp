@@ -46,7 +46,7 @@ public:
   unsigned long get_umask() const;
   bool get_autostart() const;
   AutoRestart get_autorestart() const;
-  std::vector<std::string> get_env() const;
+  std::vector<std::pair<std::string, std::string>> get_env() const;
   std::vector<uint8_t> get_exitcodes() const;
 
 private:
@@ -63,7 +63,7 @@ private:
   unsigned long _umask;
   bool _autostart;
   AutoRestart _autorestart;
-  std::vector<std::string> _env;
+  std::vector<std::pair<std::string, std::string>> _env;
   std::vector<uint8_t> _exitcodes;
 };
 

@@ -12,6 +12,7 @@ public:
   int start();
   int stop(int sig);
   int restart(int sig);
+  void setup_env() const;
   void setup_outputs() const;
   void setup_workingdir() const;
 

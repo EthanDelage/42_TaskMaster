@@ -146,10 +146,11 @@ void ProgramConfig::parse_env(YAML::Node config_node) {
   if (!config_node["env"]) {
     return;
   }
+
   for (const auto &entry : config_node["env"]) {
-    _env.push_back(entry.first.as<std::string>() + "=" +
-                   entry.second.as<std::string>());
-  } // TODO: test this
+    _env.emplace_back(entry.first.as<std::string>(),
+                      entry.second.as<std::string>());
+  }
 }
 
 void ProgramConfig::parse_exitcodes(YAML::Node config_node) {
@@ -202,7 +203,7 @@ std::ostream &operator<<(std::ostream &os, const ProgramConfig &object) {
   os << "\n";
   os << "  Env:\n";
   for (const auto &env_var : object.get_env()) {
-    os << "    " << env_var << "\n";
+    os << "\t" << env_var.first << "=" << env_var.second + "\n";
   }
   os << "---------------------------\n";
   return os;
@@ -234,7 +235,10 @@ bool ProgramConfig::get_autostart() const { return _autostart; }
 
 AutoRestart ProgramConfig::get_autorestart() const { return _autorestart; }
 
-std::vector<std::string> ProgramConfig::get_env() const { return _env; }
+std::vector<std::pair<std::string, std::string>>
+ProgramConfig::get_env() const {
+  return _env;
+}
 
 std::vector<uint8_t> ProgramConfig::get_exitcodes() const { return _exitcodes; }
 
