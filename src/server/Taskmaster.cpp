@@ -107,7 +107,10 @@ void Taskmaster::reap_processes() {
 
 void Taskmaster::update_config() {
   std::vector<ProgramConfig> new_program_configs = _config.parse();
-
+  for (auto &new_program_config : new_program_configs) {
+    if (_processes.find(new_program_config.get_name()) == _processes.end()) {
+    }
+  }
 }
 
 void Taskmaster::process_termination_handler(pid_t pid, int exitcode) {
