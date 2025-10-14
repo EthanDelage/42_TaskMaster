@@ -10,8 +10,8 @@ public:
   explicit Process(ProgramConfig &program_config);
 
   int start();
-  int stop(int sig);
-  int restart(int sig);
+  int stop(void);
+  int restart(void);
   void setup_env() const;
   void setup_outputs() const;
   void setup_workingdir() const;

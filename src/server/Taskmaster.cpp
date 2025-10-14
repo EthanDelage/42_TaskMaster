@@ -7,6 +7,9 @@
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
 extern "C" {
 #include <poll.h>
 #include <sys/wait.h>
@@ -58,6 +61,7 @@ void Taskmaster::loop() {
   fds[0].events = POLLIN;
   sigemptyset(&mask);
   sigaddset(&mask, SIGCHLD);
+  sigaddset(&mask, SIGHUP);
   sigprocmask(SIG_BLOCK, &mask, &origin_mask);
 
   autostart_processes();
@@ -74,18 +78,27 @@ void Taskmaster::loop() {
   }
 }
 
-int Taskmaster::autostart_processes() {
+void Taskmaster::autostart_processes() {
   for (auto & [_, process]: _processes) {
-    if (process.get_program_config().get_autostart()) {
-      start_process(process);
-    }
+    autostart_process(process);
   }
-  return 0;
 }
+
+void Taskmaster::autostart_process(Process &process) {
+  if (process.get_program_config().get_autostart()) {
+    start_process(process);
+  }
+}
+
 
 void Taskmaster::start_process(Process &process) {
   process.start();
   _running_processes.emplace(process.get_pid(), process);
+}
+
+void Taskmaster::stop_process(Process &process) {
+  process.stop();
+  _running_processes.erase(process.get_pid());
 }
 
 void Taskmaster::reap_processes() {
@@ -107,11 +120,38 @@ void Taskmaster::reap_processes() {
 
 void Taskmaster::update_config() {
   std::vector<ProgramConfig> new_program_configs = _config.parse();
+  std::unordered_map<std::string, Process> new_processes;
+
   for (auto &new_program_config : new_program_configs) {
-    if (_processes.find(new_program_config.get_name()) == _processes.end()) {
+    auto it = _processes.find(new_program_config.get_name());
+    if (it == _processes.end()) {
+      // New program_config is not found in the current process list
+      std::cout << "Process " << new_program_config.get_name() << " not in current list, starting..." << std::endl;
+      Process new_process(new_program_config);
+      autostart_process(new_process);
+      new_processes.insert({new_program_config.get_name(), std::move(new_process)});
+    } else if (new_program_config != it->second.get_program_config()) {
+      // New program_config is found but differ
+      std::cout << "Process " << new_program_config.get_name() << " differ, stopping..." << std::endl;
+      stop_process(it->second);
+      _processes.erase(new_program_config.get_name());
+      Process new_process(new_program_config);
+      autostart_process(new_process);
+      new_processes.insert({new_program_config.get_name(), std::move(new_process)});
+    } else {
+      // New program_config does not differ from the old one
+      auto node = _processes.extract(new_program_config.get_name());
+      new_processes.insert(std::move(node));
+      std::cout << "Process " << new_program_config.get_name() << " does not differ, continuing..." << std::endl;
     }
   }
+  for (auto &[_, stale_process] : _processes) {
+    stop_process(stale_process);
+  }
+  _processes.clear();
+  _processes = std::move(new_processes);
 }
+
 
 void Taskmaster::process_termination_handler(pid_t pid, int exitcode) {
   unsigned long runtime;
@@ -140,7 +180,7 @@ void Taskmaster::signal_interruption_handler(void) {
   }
   if (sighup_flag_g) {
     sighup_flag_g = 0;
-    
+    update_config();
   }
 }
 
@@ -197,4 +237,4 @@ static bool process_check_unexpected(Process &process, int status) {
 
 static void sigchld_handler(int) { sigchld_flag_g = 1; }
 
-static void sighup_handler(int) { sigchld_flag_g = 1; }
+static void sighup_handler(int) { std::cout << "SIGHUP_HANDLER" << std::endl; sighup_flag_g = 1; }

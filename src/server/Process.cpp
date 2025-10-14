@@ -45,8 +45,10 @@ int Process::start() {
   return 0;
 }
 
-int Process::stop(const int sig) {
-  if (kill(_pid, sig) == -1) {
+int Process::stop(void) {
+  std::cout << "[Taskmaster] Stopping " << _program_config.get_name() << " ..."
+            << std::endl;
+  if (kill(_pid, _program_config.get_stopsignal()) == -1) {
     perror("kill");
     return -1;
   }
@@ -58,8 +60,8 @@ int Process::stop(const int sig) {
   return 0;
 }
 
-int Process::restart(int sig) {
-  if (stop(sig) == -1) {
+int Process::restart(void) {
+  if (stop() == -1) {
     return -1;
   }
   return start();
@@ -124,7 +126,7 @@ static void redirect_output(std::string path, int current_output) {
 
   new_output = path.empty()
                    ? open("/dev/null", O_WRONLY)
-                   : open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                   : open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
   if (new_output == -1) {
     throw std::runtime_error(std::string("open") + strerror(errno));
   }

@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <csignal>
+#include <cstring>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
@@ -28,6 +29,38 @@ ProgramConfig::ProgramConfig(std::string name, const YAML::Node &config_node)
   parse_autorestart(config_node);
   parse_env(config_node);
   parse_exitcodes(config_node);
+}
+
+bool ProgramConfig::operator==(const ProgramConfig& other) const {
+  char **this_cmd = this->get_cmd();
+  char **other_cmd = other.get_cmd();
+
+  for (; *this_cmd && *other_cmd; ++this_cmd, ++other_cmd) {
+    if (strcmp(*this_cmd, *other_cmd) != 0) {
+      return false;
+    }
+  }
+  if (*this_cmd != nullptr || *other_cmd != nullptr) {
+    return false;
+  }
+  return _name == other._name &&
+    _workingdir == other._workingdir &&
+    _stdout == other._stdout &&
+    _stderr == other._stderr &&
+    _stopsignal == other._stopsignal &&
+    _numprocs == other._numprocs &&
+    _starttime == other._starttime &&
+    _startretries == other._startretries &&
+    _stoptime == other._stoptime &&
+    _umask == other._umask &&
+    _autostart == other._autostart &&
+    _autorestart == other._autorestart &&
+    _env == other._env &&
+    _exitcodes == other._exitcodes;
+}
+
+bool ProgramConfig::operator!=(const ProgramConfig& other) const {
+  return !(*this == other);
 }
 
 void ProgramConfig::parse_cmd(YAML::Node config_node) {

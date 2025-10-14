@@ -11,6 +11,7 @@ int main(int argc, char **argv) {
   (void)argv;
   Config config("config.yaml");
 
+  std::cout << "Taskmaster pid " << getpid() << std::endl;
   Taskmaster taskmaster(config);
   try {
     taskmaster.loop();

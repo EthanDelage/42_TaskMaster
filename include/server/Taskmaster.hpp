@@ -9,7 +9,6 @@
 class Taskmaster {
 public:
   explicit Taskmaster(Config config);
-  int autostart_processes();
   void loop();
 
 private:
@@ -18,6 +17,9 @@ private:
   std::unordered_map<pid_t, Process &> _running_processes;
 
   void start_process(Process &process);
+  void stop_process(Process &process);
+  void autostart_process(Process &process);
+  void autostart_processes();
   void reap_processes();
   void process_termination_handler(pid_t pid, int exitcode);
   void signal_interruption_handler(void);
