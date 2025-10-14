@@ -20,7 +20,7 @@ private:
   void start_process(Process &process);
   void reap_processes();
   void process_termination_handler(pid_t pid, int exitcode);
-  void sigchld_process(void);
+  void signal_interruption_handler(void);
   void update_config();
 };
 

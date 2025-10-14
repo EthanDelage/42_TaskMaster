@@ -44,7 +44,7 @@ Taskmaster::Taskmaster(Config config) : _config(config){
     throw std::runtime_error("sigaction()");
   }
   for (auto &program_config : program_configs) {
-    _processes.emplace_back(program_config);
+    _processes.emplace(program_config.get_name(), program_config);
   }
 }
 
@@ -75,7 +75,7 @@ void Taskmaster::loop() {
 }
 
 int Taskmaster::autostart_processes() {
-  for (Process &process : _processes) {
+  for (auto & [_, process]: _processes) {
     if (process.get_program_config().get_autostart()) {
       start_process(process);
     }
