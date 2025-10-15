@@ -16,14 +16,19 @@ static void redirect_output(std::string path, int current_output);
 
 extern char **environ; // envp
 
-Process::Process(ProgramConfig &program_config)
+Process::Process(std::shared_ptr<ProgramConfig> program_config)
     : _program_config(std::move(program_config)),
-      _cmd_path(get_cmd_path(_program_config.get_cmd()[0])),
       _pid(-1),
-      _startretries(0) {}
+      _startretries(0),
+      _cmd_path(get_cmd_path(_program_config->get_cmd()[0])) {
+  if (pipe(_stdout_pipe) == -1 || pipe(_stderr_pipe) == -1) {
+    throw std::runtime_error("Error: Process() failed to create pipe");
+  }
+  std::cout << "Process " << _program_config->get_name() << " successfully created" << std::endl;
+}
 
 int Process::start() {
-  std::cout << "[Taskmaster] Starting " << _program_config.get_name() << " ..."
+  std::cout << "[Taskmaster] Starting " << _program_config->get_name() << " ..."
             << std::endl;
   _pid = fork();
   if (_pid == -1) {
@@ -39,7 +44,7 @@ int Process::start() {
   setup_env();
   setup_outputs();
   setup_workingdir();
-  if (execve(_cmd_path.c_str(), _program_config.get_cmd(), environ) == -1) {
+  if (execve(_cmd_path.c_str(), _program_config->get_cmd(), environ) == -1) {
     perror("execve");
     return -1;
   }
@@ -68,7 +73,7 @@ int Process::restart(int sig) {
 
 pid_t Process::get_pid() const { return _pid; }
 
-ProgramConfig &Process::get_program_config() { return _program_config; }
+ProgramConfig &Process::get_program_config() { return *_program_config; }
 
 std::chrono::steady_clock::time_point Process::get_start_time() const {
   return _start_time;
@@ -101,21 +106,21 @@ std::string Process::get_cmd_path(const std::string &cmd) {
 }
 
 void Process::setup_env() const {
-  for (std::pair<std::string, std::string> env : _program_config.get_env()) {
+  for (std::pair<std::string, std::string> env : _program_config->get_env()) {
     setenv(env.first.c_str(), env.second.c_str(), 1);
   }
 }
 
 void Process::setup_outputs() const {
-  redirect_output(_program_config.get_stdout(), STDOUT_FILENO);
-  redirect_output(_program_config.get_stderr(), STDERR_FILENO);
+  redirect_output(_program_config->get_stdout(), STDOUT_FILENO);
+  redirect_output(_program_config->get_stderr(), STDERR_FILENO);
 }
 
 void Process::setup_workingdir() const {
-  if (_program_config.get_workingdir().empty()) {
+  if (_program_config->get_workingdir().empty()) {
     return;
   }
-  if (chdir(_program_config.get_workingdir().c_str()) == -1) {
+  if (chdir(_program_config->get_workingdir().c_str()) == -1) {
     throw std::runtime_error(std::string("chdir") + strerror(errno));
   }
 }

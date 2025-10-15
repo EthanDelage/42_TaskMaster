@@ -2,13 +2,14 @@
 #include "server/Process.hpp"
 #include "server/config/ProgramConfig.hpp"
 
-#include <chrono>
 #include <csignal>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <unordered_map>
 
 static void sighup_handler(int);
 
@@ -21,6 +22,7 @@ Taskmaster::Taskmaster(const Config &config)
   std::vector<ProgramConfig> program_configs = config.parse();
 
   add_poll_fd({_server_socket.get_fd(), POLLIN, 0}, {FdType::Server});
+  init_process_pool(program_configs);
 }
 
 void Taskmaster::loop() {
@@ -46,6 +48,18 @@ void Taskmaster::loop() {
   }
 }
 
+void Taskmaster::init_process_pool(std::vector<ProgramConfig>& programs_configs) {
+  for (auto &program_config : programs_configs) {
+    std::vector<Process> processes;
+    std::shared_ptr<ProgramConfig> shared_program_config;
+    shared_program_config = std::make_shared<ProgramConfig>(std::move(program_config));
+    for (size_t i = 0; i < program_config.get_numprocs(); ++i) {
+      processes.emplace_back(shared_program_config);
+    }
+    _process_pool.insert({ program_config.get_name(), processes });
+  }
+}
+
 void Taskmaster::handle_poll_fds() {
   for (size_t index = 1; index < _poll_fds.size(); index++) {
     const pollfd *poll_fd = &_poll_fds[index];
@@ -68,7 +82,7 @@ void Taskmaster::handle_client_command() {
 
 void Taskmaster::read_process_output(int fd) {
   (void)fd; // TODO: remove this
-  for (auto &[name, processes] : _processes_pool) {
+  for (auto &[name, processes] : _process_pool) {
     for (auto &process : processes) {
       (void)process; // TODO: remove this
       if (false) {

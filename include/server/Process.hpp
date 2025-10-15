@@ -3,11 +3,12 @@
 
 #include "server/config/ProgramConfig.hpp"
 #include <chrono>
+#include <memory>
 #include <string>
 
 class Process {
 public:
-  explicit Process(ProgramConfig &program_config);
+  Process(std::shared_ptr<ProgramConfig> program_config);
 
   int start();
   int stop(int sig);
@@ -26,11 +27,13 @@ public:
 private:
   static std::string get_cmd_path(const std::string &cmd);
 
-  ProgramConfig _program_config;
-  std::string _cmd_path;
+  std::shared_ptr<ProgramConfig> _program_config;
   pid_t _pid;
   std::chrono::steady_clock::time_point _start_time;
   unsigned long _startretries;
+  int _stdout_pipe[2];
+  int _stderr_pipe[2];
+  std::string _cmd_path;
 };
 
 #endif // PROCESS_HPP

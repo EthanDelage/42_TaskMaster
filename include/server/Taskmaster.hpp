@@ -28,11 +28,12 @@ public:
 private:
   Config _config;
   CommandManager _command_manager;
-  std::unordered_map<std::string, std::vector<Process>> _processes_pool;
+  std::unordered_map<std::string, std::vector<Process>> _process_pool;
   std::vector<pollfd> _poll_fds;
   std::vector<poll_fd_metadata_t> _poll_fds_metadata;
   UnixSocketServer _server_socket;
 
+  void init_process_pool(std::vector<ProgramConfig>& programs_configs);
   void handle_poll_fds();
   void handle_client_command();
   void read_process_output(int fd);
