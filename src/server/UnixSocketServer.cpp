@@ -25,7 +25,6 @@ UnixSocketServer::~UnixSocketServer() {
 int UnixSocketServer::accept_client() {
   int client_fd = accept(_fd, nullptr, nullptr);
   if (client_fd == -1) {
-    perror("accept");
     return -1;
   }
   _listen_fds.push_back(client_fd);
