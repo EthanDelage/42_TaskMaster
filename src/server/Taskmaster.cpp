@@ -135,11 +135,8 @@ void Taskmaster::add_poll_fd(pollfd fd, poll_fd_metadata_t metadata) {
 
 void Taskmaster::remove_poll_fd(const int fd) {
   long index;
-  auto it = _poll_fds.begin();
-
-  while (it != _poll_fds.end() && it->fd != fd) {
-    ++it;
-  }
+  auto it = std::find_if(_poll_fds.begin(), _poll_fds.end(),
+                         [fd](pollfd poll_fd) { return fd == poll_fd.fd; });
   if (it == _poll_fds.end()) {
     throw std::invalid_argument("remove_poll_fd(): invalid fd");
   }
