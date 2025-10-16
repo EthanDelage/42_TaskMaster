@@ -16,7 +16,7 @@ static void redirect_output(int new_fd, int current_fd);
 
 extern char **environ; // envp
 
-Process::Process(std::shared_ptr<ProgramConfig> program_config)
+Process::Process(std::shared_ptr<const ProgramConfig> program_config)
     : _program_config(std::move(program_config)),
       _pid(-1),
       _num_retries(0),
@@ -98,7 +98,7 @@ int Process::restart(int sig) {
 
 pid_t Process::get_pid() const { return _pid; }
 
-ProgramConfig &Process::get_program_config() { return *_program_config; }
+const ProgramConfig &Process::get_program_config() { return *_program_config; }
 
 std::chrono::steady_clock::time_point Process::get_start_time() const {
   return _start_time;
