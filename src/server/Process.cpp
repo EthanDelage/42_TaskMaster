@@ -12,19 +12,35 @@ extern "C" {
 #include <sys/wait.h>
 }
 
-static void redirect_output(std::string path, int current_output);
+static void redirect_output(int new_output, int current_output);
 
 extern char **environ; // envp
 
 Process::Process(std::shared_ptr<ProgramConfig> program_config)
     : _program_config(std::move(program_config)),
       _pid(-1),
-      _startretries(0),
+      _num_retries(0),
+      _state(State::Waiting),
+      _requested_command(Command::None),
       _cmd_path(get_cmd_path(_program_config->get_cmd()[0])) {
   if (pipe(_stdout_pipe) == -1 || pipe(_stderr_pipe) == -1) {
     throw std::runtime_error("Error: Process() failed to create pipe");
   }
-  std::cout << "Process " << _program_config->get_name() << " successfully created" << std::endl;
+  std::string stdout_path = _program_config->get_stdout();
+  _stdout_fd = stdout_path.empty()
+                   ? open("/dev/null", O_WRONLY)
+                   : open(stdout_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (_stdout_fd == -1) {
+    throw std::runtime_error(std::string("open") + strerror(errno));
+  }
+  std::string stderr_path = _program_config->get_stderr();
+  _stderr_fd = stderr_path.empty()
+                   ? open("/dev/null", O_WRONLY)
+                   : open(stderr_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (_stderr_fd == -1) {
+    throw std::runtime_error(std::string("open") + strerror(errno));
+  }
+  std::cout << "Process " << _program_config->get_name() << " created" << std::endl;
 }
 
 int Process::start() {
@@ -79,11 +95,19 @@ std::chrono::steady_clock::time_point Process::get_start_time() const {
   return _start_time;
 }
 
-unsigned long Process::get_startretries() const { return _startretries; }
+size_t Process::get_num_retries() const { return _num_retries; }
 
-void Process::set_startretries(unsigned long startretries) {
-  _startretries = startretries;
-}
+Process::State Process::get_state() const { return _state; }
+
+const int *Process::get_stdout_pipe() const { return _stdout_pipe; }
+
+const int *Process::get_stderr_pipe() const { return _stderr_pipe; }
+
+void Process::set_num_retries(size_t num_retries) { _num_retries = num_retries; }
+
+void Process::set_state(State state) { _state = state; }
+
+void Process::set_requested_command(Command requested_command) { _requested_command = requested_command; }
 
 std::string Process::get_cmd_path(const std::string &cmd) {
   if (cmd.find('/') != std::string::npos) {
@@ -111,11 +135,6 @@ void Process::setup_env() const {
   }
 }
 
-void Process::setup_outputs() const {
-  redirect_output(_program_config->get_stdout(), STDOUT_FILENO);
-  redirect_output(_program_config->get_stderr(), STDERR_FILENO);
-}
-
 void Process::setup_workingdir() const {
   if (_program_config->get_workingdir().empty()) {
     return;
@@ -125,15 +144,12 @@ void Process::setup_workingdir() const {
   }
 }
 
-static void redirect_output(std::string path, int current_output) {
-  int new_output;
+void Process::setup_outputs() {
+  redirect_output(_stdout_pipe[PIPE_WRITE], STDOUT_FILENO);
+  redirect_output(_stderr_pipe[PIPE_WRITE], STDERR_FILENO);
+}
 
-  new_output = path.empty()
-                   ? open("/dev/null", O_WRONLY)
-                   : open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  if (new_output == -1) {
-    throw std::runtime_error(std::string("open") + strerror(errno));
-  }
+static void redirect_output(int new_output, int current_output) {
   if (dup2(new_output, current_output) == -1) {
     throw std::runtime_error(std::string("dup2") + strerror(errno));
   }
