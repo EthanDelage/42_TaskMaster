@@ -33,6 +33,8 @@ private:
   std::vector<pollfd> _poll_fds;
   std::vector<poll_fd_metadata_t> _poll_fds_metadata;
   std::vector<ClientSession> _client_sessions;
+  ClientSession *_current_client{};
+  std::vector<ClientSession *> _reload_requesting_clients;
   UnixSocketServer _server_socket;
 
   void handle_poll_fds();

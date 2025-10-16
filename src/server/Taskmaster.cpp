@@ -41,7 +41,13 @@ void Taskmaster::loop() {
     }
     handle_poll_fds();
     if (sighup_received_g) {
-      // TODO: reload the config
+      // TODO: reload the config and add log
+      for (auto client_session : _reload_requesting_clients) {
+        // TODO: update the reload response message
+        client_session->send_response("successful reload");
+      }
+      _reload_requesting_clients.clear();
+      sighup_received_g = 0;
     }
   }
 }
@@ -80,6 +86,7 @@ void Taskmaster::handle_client_command(const pollfd &poll_fd) {
       disconnect_client(poll_fd.fd);
       return;
     }
+    _current_client = &(*it);
     _command_manager.run_command(cmd_line);
   }
 }
@@ -168,7 +175,10 @@ void Taskmaster::stop(const std::vector<std::string> &args) { (void)args; }
 
 void Taskmaster::restart(const std::vector<std::string> &args) { (void)args; }
 
-void Taskmaster::reload(const std::vector<std::string> &) {}
+void Taskmaster::reload(const std::vector<std::string> &) {
+  sighup_received_g = 1;
+  _reload_requesting_clients.push_back(_current_client);
+}
 
 void Taskmaster::quit(const std::vector<std::string> &) {}
 
