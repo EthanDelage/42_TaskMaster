@@ -55,6 +55,8 @@ void Taskmaster::init_process_pool(std::vector<ProgramConfig>& programs_configs)
     shared_program_config = std::make_shared<ProgramConfig>(std::move(program_config));
     for (size_t i = 0; i < program_config.get_numprocs(); ++i) {
       processes.emplace_back(shared_program_config);
+      add_poll_fd({processes[i].get_stdout_pipe()[PIPE_READ], POLLIN, 0}, {FdType::Process});
+      add_poll_fd({processes[i].get_stderr_pipe()[PIPE_READ], POLLIN, 0}, {FdType::Process});
     }
     _process_pool.insert({ program_config.get_name(), processes });
   }
