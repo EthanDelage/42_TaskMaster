@@ -5,6 +5,7 @@ add_executable(server
         config/Config.cpp
         config/ProgramConfig.cpp
         UnixSocketServer.cpp
+        ClientSession.cpp
 )
 
 include(FetchContent)
