@@ -27,6 +27,7 @@ public:
   };
 
   Process(std::shared_ptr<ProgramConfig> program_config);
+  ~Process();
 
   int start();
   int stop(int sig);

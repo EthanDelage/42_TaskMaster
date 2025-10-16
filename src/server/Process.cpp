@@ -43,6 +43,15 @@ Process::Process(std::shared_ptr<ProgramConfig> program_config)
   std::cout << "Process " << _program_config->get_name() << " created" << std::endl;
 }
 
+Process::~Process() {
+  close(_stdout_pipe[PIPE_READ]);
+  close(_stdout_pipe[PIPE_WRITE]);
+  close(_stderr_pipe[PIPE_READ]);
+  close(_stderr_pipe[PIPE_WRITE]);
+  close(_stdout_fd);
+  close(_stderr_fd);
+}
+
 int Process::start() {
   std::cout << "[Taskmaster] Starting " << _program_config->get_name() << " ..."
             << std::endl;
