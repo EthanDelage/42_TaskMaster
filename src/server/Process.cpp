@@ -12,7 +12,7 @@ extern "C" {
 #include <sys/wait.h>
 }
 
-static void redirect_output(int new_output, int current_output);
+static void redirect_output(int new_fd, int current_fd);
 
 extern char **environ; // envp
 
@@ -149,9 +149,9 @@ void Process::setup_outputs() {
   redirect_output(_stderr_pipe[PIPE_WRITE], STDERR_FILENO);
 }
 
-static void redirect_output(int new_output, int current_output) {
-  if (dup2(new_output, current_output) == -1) {
+static void redirect_output(int new_fd, int current_fd) {
+  if (dup2(new_fd, current_fd) == -1) {
     throw std::runtime_error(std::string("dup2") + strerror(errno));
   }
-  close(new_output);
+  close(new_fd);
 }

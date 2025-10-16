@@ -22,6 +22,7 @@ public:
   enum class Command {
     Stop,
     Start,
+    Restart,
     None,
   };
 
