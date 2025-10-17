@@ -1,4 +1,5 @@
 #include "common/CommandManager.hpp"
+#include "common/Logger.hpp"
 
 #include <common/utils.hpp>
 #include <iostream>
@@ -84,7 +85,9 @@ void CommandManager::run_command(const std::string &command_line) {
       cmd->second.callback(args);
     }
   } else {
-    std::cerr << "Unknown command: `" << cmd_name << '`' << std::endl;
+    const std::string error_msg = "Unknown command: `" + cmd_name + '`';
+    Logger::get_instance().info(error_msg);
+    std::cerr << error_msg << std::endl;
   }
 }
 
@@ -95,6 +98,10 @@ void CommandManager::add_command(const command_t &command) {
 bool CommandManager::is_valid_args(const command_t &command,
                                    const std::vector<std::string> &args) {
   if (command.args.size() + 1 != args.size()) {
+    Logger::get_instance().info("Command `" + command.name + "` needs " +
+                                std::to_string(command.args.size()) +
+                                " arguments, but is called with " +
+                                std::to_string(args.size()) + " arguments");
     std::cerr << "Invalid number of arguments" << std::endl
               << "Usage: " << command.name;
     for (const auto &arg : command.args) {
