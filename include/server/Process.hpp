@@ -6,8 +6,8 @@
 #include <memory>
 #include <string>
 
-#define PIPE_READ   0
-#define PIPE_WRITE  1
+#define PIPE_READ 0
+#define PIPE_WRITE 1
 
 class Process {
 public:
@@ -34,7 +34,7 @@ public:
   int restart(int sig);
 
   pid_t get_pid() const;
-  const ProgramConfig & get_program_config();
+  const ProgramConfig &get_program_config();
   std::chrono::steady_clock::time_point get_start_time() const;
   size_t get_num_retries() const;
   State get_state() const;

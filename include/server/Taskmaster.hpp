@@ -33,7 +33,7 @@ private:
   std::vector<poll_fd_metadata_t> _poll_fds_metadata;
   UnixSocketServer _server_socket;
 
-  void init_process_pool(std::vector<ProgramConfig>& programs_configs);
+  void init_process_pool(std::vector<ProgramConfig> &programs_configs);
   void handle_poll_fds();
   void handle_client_command();
   void read_process_output(int fd);

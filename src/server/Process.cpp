@@ -27,20 +27,21 @@ Process::Process(std::shared_ptr<const ProgramConfig> program_config)
     throw std::runtime_error("Error: Process() failed to create pipe");
   }
   std::string stdout_path = _program_config->get_stdout();
-  _stdout_fd = stdout_path.empty()
-                   ? open("/dev/null", O_WRONLY)
-                   : open(stdout_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  _stdout_fd = stdout_path.empty() ? open("/dev/null", O_WRONLY)
+                                   : open(stdout_path.c_str(),
+                                          O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (_stdout_fd == -1) {
     throw std::runtime_error(std::string("open") + strerror(errno));
   }
   std::string stderr_path = _program_config->get_stderr();
-  _stderr_fd = stderr_path.empty()
-                   ? open("/dev/null", O_WRONLY)
-                   : open(stderr_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  _stderr_fd = stderr_path.empty() ? open("/dev/null", O_WRONLY)
+                                   : open(stderr_path.c_str(),
+                                          O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (_stderr_fd == -1) {
     throw std::runtime_error(std::string("open") + strerror(errno));
   }
-  std::cout << "Process " << _program_config->get_name() << " created" << std::endl;
+  std::cout << "Process " << _program_config->get_name() << " created"
+            << std::endl;
 }
 
 Process::~Process() {
@@ -112,11 +113,15 @@ const int *Process::get_stdout_pipe() const { return _stdout_pipe; }
 
 const int *Process::get_stderr_pipe() const { return _stderr_pipe; }
 
-void Process::set_num_retries(size_t num_retries) { _num_retries = num_retries; }
+void Process::set_num_retries(size_t num_retries) {
+  _num_retries = num_retries;
+}
 
 void Process::set_state(State state) { _state = state; }
 
-void Process::set_requested_command(Command requested_command) { _requested_command = requested_command; }
+void Process::set_requested_command(Command requested_command) {
+  _requested_command = requested_command;
+}
 
 std::string Process::get_cmd_path(const std::string &cmd) {
   if (cmd.find('/') != std::string::npos) {
