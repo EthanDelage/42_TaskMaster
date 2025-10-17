@@ -2,6 +2,7 @@ add_executable(server
         main.cpp
         Process.cpp
         Taskmaster.cpp
+        TaskManager.cpp
         config/Config.cpp
         config/ProgramConfig.cpp
         UnixSocketServer.cpp

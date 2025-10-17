@@ -5,10 +5,12 @@
 #include "server/ClientSession.hpp"
 #include "server/Process.hpp"
 #include "server/config/Config.hpp"
+#include "server/TaskManager.hpp"
 
 #include <common/CommandManager.hpp>
 #include <sys/poll.h>
 #include <unordered_map>
+#include <mutex>
 
 enum class FdType {
   Server,
@@ -30,6 +32,7 @@ private:
   Config _config;
   CommandManager _command_manager;
   std::unordered_map<std::string, std::vector<Process>> _process_pool;
+  std::mutex _process_pool_mutex;
   std::vector<pollfd> _poll_fds;
   std::vector<poll_fd_metadata_t> _poll_fds_metadata;
   std::vector<ClientSession> _client_sessions;
