@@ -4,6 +4,7 @@ add_library(common
   utils/split.cpp
   UnixSocket.cpp
   CommandManager.cpp
+  Logger.cpp
 )
 
 target_compile_options(common
