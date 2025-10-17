@@ -4,6 +4,12 @@
 #include "server/config/ProgramConfig.hpp"
 #include <cstdlib>
 
+TaskManager::TaskManager(std::unordered_map<std::string, std::vector<Process>>& process_pool, std::mutex& process_pool_mutex)
+  : _process_pool(process_pool),
+  _process_pool_mutex(process_pool_mutex)
+{
+
+}
 
 static void fsm_waiting_task(Process &process, const ProgramConfig &config);
 static void fsm_starting_task(Process &process);
