@@ -1,15 +1,14 @@
+#include "common/Logger.hpp"
 #include "server/Taskmaster.hpp"
 #include "server/config/Config.hpp"
-#include <csignal>
-#include <cstdlib>
 #include <exception>
 #include <iostream>
-#include <sys/wait.h>
 
 int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
   Config config("config.yaml");
+  Logger::init("./server.log");
 
   Taskmaster taskmaster(config);
   try {
