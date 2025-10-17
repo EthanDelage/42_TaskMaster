@@ -1,6 +1,5 @@
 #include "server/config/Config.hpp"
 
-#include <iostream>
 #include <yaml-cpp/yaml.h>
 
 static bool is_valid_program_name(const std::string &name);
