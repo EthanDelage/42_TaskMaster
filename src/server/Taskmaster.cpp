@@ -43,7 +43,13 @@ void Taskmaster::loop() {
     }
     handle_poll_fds();
     if (sighup_received_g) {
-      // TODO: reload the config
+      // TODO: reload the config and add log
+      for (auto client_session : _reload_requesting_clients) {
+        // TODO: update the reload response message
+        client_session->send_response("successful reload");
+      }
+      _reload_requesting_clients.clear();
+      sighup_received_g = 0;
     }
   }
 }
@@ -73,7 +79,7 @@ void Taskmaster::handle_poll_fds() {
 
     if (poll_fd->revents != 0) {
       if (fd_metadata->type == FdType::Client) {
-        handle_client_command();
+        handle_client_command(*poll_fd);
       } else if (fd_metadata->type == FdType::Process) {
         read_process_output(poll_fd->fd);
       }
@@ -82,8 +88,27 @@ void Taskmaster::handle_poll_fds() {
   handle_connection();
 }
 
-void Taskmaster::handle_client_command() {
-  // TODO: waiting for ClientSession class
+void Taskmaster::handle_client_command(const pollfd &poll_fd) {
+  const auto it = get_client_session_from_fd(poll_fd.fd);
+  std::string cmd_line;
+  std::string cmd;
+
+  if (it == _client_sessions.end()) {
+    throw std::runtime_error("handle_client_command(): invalid fd");
+  }
+
+  if (poll_fd.revents & (POLLERR | POLLHUP)) {
+    disconnect_client(poll_fd.fd);
+  } else if (poll_fd.revents & POLLIN) {
+    try {
+      cmd_line = (*it)->recv_command();
+    } catch (const std::runtime_error &e) {
+      disconnect_client(poll_fd.fd);
+      return;
+    }
+    _current_client = it->get();
+    _command_manager.run_command(cmd_line);
+  }
 }
 
 void Taskmaster::read_process_output(int fd) {
@@ -111,21 +136,16 @@ void Taskmaster::handle_connection() {
       // TODO: log handle_connection() failed
       return;
     }
+    // TODO: add log
     add_poll_fd({client_fd, POLLIN, 0}, {FdType::Client});
+    _client_sessions.emplace_back(std::make_unique<ClientSession>(client_fd));
   }
 }
 
 void Taskmaster::disconnect_client(int fd) {
-  size_t index;
-  auto it = std::find_if(_poll_fds.begin(), _poll_fds.end(),
-                         [fd](pollfd poll_fd) { return fd == poll_fd.fd; });
-  if (it == _poll_fds.end()) {
-    throw std::invalid_argument("disconnect_client(): invalid fd");
-  }
-  index = std::distance(_poll_fds.begin(), it);
-  _poll_fds.erase(it);
-  _poll_fds_metadata.erase(_poll_fds_metadata.begin() + index);
-  // TODO: remove associated ClientSession
+  // TODO: add log
+  remove_client_session(fd);
+  remove_poll_fd(fd);
 }
 
 void Taskmaster::add_poll_fd(pollfd fd, poll_fd_metadata_t metadata) {
@@ -135,17 +155,23 @@ void Taskmaster::add_poll_fd(pollfd fd, poll_fd_metadata_t metadata) {
 
 void Taskmaster::remove_poll_fd(const int fd) {
   long index;
-  auto it = _poll_fds.begin();
-
-  while (it != _poll_fds.end() && it->fd != fd) {
-    ++it;
-  }
+  auto it = std::find_if(_poll_fds.begin(), _poll_fds.end(),
+                         [fd](pollfd poll_fd) { return fd == poll_fd.fd; });
   if (it == _poll_fds.end()) {
     throw std::invalid_argument("remove_poll_fd(): invalid fd");
   }
   index = std::distance(_poll_fds.begin(), it);
   _poll_fds.erase(it);
   _poll_fds_metadata.erase(_poll_fds_metadata.begin() + index);
+}
+
+void Taskmaster::remove_client_session(int fd) {
+  auto it = get_client_session_from_fd(fd);
+
+  if (it == _client_sessions.end()) {
+    throw std::runtime_error("disconnect_client(): invalid fd");
+  }
+  _client_sessions.erase(it);
 }
 
 void Taskmaster::set_sighup_handler() {
@@ -166,12 +192,23 @@ void Taskmaster::stop(const std::vector<std::string> &args) { (void)args; }
 
 void Taskmaster::restart(const std::vector<std::string> &args) { (void)args; }
 
-void Taskmaster::reload(const std::vector<std::string> &) {}
+void Taskmaster::reload(const std::vector<std::string> &) {
+  sighup_received_g = 1;
+  _reload_requesting_clients.push_back(_current_client);
+}
 
 void Taskmaster::quit(const std::vector<std::string> &) {}
 
 void Taskmaster::help(const std::vector<std::string> &) {
   // No server-side implementation
+}
+
+std::vector<std::unique_ptr<ClientSession>>::iterator
+Taskmaster::get_client_session_from_fd(int fd) {
+  return std::find_if(_client_sessions.begin(), _client_sessions.end(),
+                      [fd](std::unique_ptr<ClientSession> &session) {
+                        return fd == session->get_fd();
+                      });
 }
 
 std::unordered_map<std::string, cmd_callback_t>
