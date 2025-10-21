@@ -1,7 +1,7 @@
 #ifndef UNIXSOCKETSERVER_HPP
 #define UNIXSOCKETSERVER_HPP
 
-#include "common/UnixSocket.hpp"
+#include "common/socket/UnixSocket.hpp"
 
 #include <vector>
 

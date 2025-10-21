@@ -33,7 +33,7 @@ void TaskmasterCtl::run_command(const std::string &command_line) {
 
 void TaskmasterCtl::send_command_and_print(
     const std::vector<std::string> &args) const {
-  if (_socket.send(join(args, " ") + '\n') == -1) {
+  if (_socket.write(join(args, " ") + '\n') == -1) {
     throw std::runtime_error(std::string("send") + strerror(errno));
   }
   std::cout << "message sent" << std::endl;
@@ -69,12 +69,14 @@ void TaskmasterCtl::print_header() {
 }
 
 void TaskmasterCtl::receive_response() const {
-  try {
-    const std::string feedback = _socket.receive();
-    std::cout << feedback << std::endl;
-  } catch (const std::runtime_error &e) {
-    std::cerr << e.what() << std::endl;
+  char buffer[SOCKET_BUFFER_SIZE];
+  ssize_t ret;
+
+  ret = _socket.read(buffer, sizeof(buffer));
+  if (ret == -1) {
+    return;
   }
+  std::cout << std::string(buffer, ret) << std::endl;
 }
 
 size_t TaskmasterCtl::get_usage_max_len() const {
