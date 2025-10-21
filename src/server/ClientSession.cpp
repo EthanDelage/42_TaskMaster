@@ -3,18 +3,16 @@
 #include <stdexcept>
 #include <unistd.h>
 
-char ClientSession::_buffer[BUFFER_SIZE];
+char ClientSession::_buffer[SOCKET_BUFFER_SIZE];
 
-ClientSession::ClientSession(const int client_fd) : _sock_fd(client_fd) {}
-
-ClientSession::~ClientSession() { close(_sock_fd); }
+ClientSession::ClientSession(const int client_fd) : Socket(client_fd) {}
 
 std::string ClientSession::recv_command() const {
   std::string buffer_str;
   ssize_t ret;
   size_t endl_pos;
 
-  ret = read(_sock_fd, _buffer, sizeof(_buffer));
+  ret = read(_buffer, sizeof(_buffer));
   if (ret == -1) {
     throw std::runtime_error("read_command()");
   }
@@ -30,9 +28,7 @@ std::string ClientSession::recv_command() const {
 }
 
 void ClientSession::send_response(const std::string &response) const {
-  if (write(_sock_fd, response.c_str(), response.length()) == -1) {
+  if (write(response) == -1) {
     throw std::runtime_error("send_response()");
   }
 }
-
-int ClientSession::get_fd() const { return _sock_fd; }

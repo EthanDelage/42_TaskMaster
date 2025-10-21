@@ -118,7 +118,7 @@ void Taskmaster::handle_connection() {
     }
     // TODO: add log
     add_poll_fd({client_fd, POLLIN, 0}, {FdType::Client});
-    _client_sessions.emplace_back(ClientSession(client_fd));
+    _client_sessions.emplace_back(client_fd);
   }
 }
 

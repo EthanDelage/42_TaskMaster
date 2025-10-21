@@ -1,10 +1,10 @@
 #ifndef UNIXSOCKETCLIENT_HPP
 #define UNIXSOCKETCLIENT_HPP
-#include "common/UnixSocket.hpp"
+#include "common/socket/UnixSocket.hpp"
 
 class UnixSocketClient : public UnixSocket {
 public:
-  UnixSocketClient(const std::string &path_name);
+  explicit UnixSocketClient(const std::string &path_name);
 
   void connect();
 };
