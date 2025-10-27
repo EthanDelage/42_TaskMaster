@@ -22,6 +22,7 @@ Process::Process(std::shared_ptr<const ProgramConfig> program_config)
       _pid(-1),
       _num_retries(0),
       _state(State::Waiting),
+      _previous_state(State::Waiting),
       _pending_command(Command::None),
       _cmd_path(get_cmd_path(_program_config->get_cmd()[0])) {
   if (pipe(_stdout_pipe) == -1) {
@@ -175,6 +176,8 @@ size_t Process::get_num_retries() const { return _num_retries; }
 
 Process::State Process::get_state() const { return _state; }
 
+Process::State Process::get_previous_state() const { return _previous_state; }
+
 Process::status_t Process::get_status() const { return _status; }
 
 Process::Command Process::get_pending_command() const { return _pending_command; }
@@ -188,6 +191,8 @@ void Process::set_num_retries(size_t num_retries) {
 }
 
 void Process::set_state(State state) { _state = state; }
+
+void Process::set_previous_state(State state) { _previous_state = state; }
 
 void Process::set_pending_command(Command pending_command) {
   _pending_command = pending_command;
@@ -239,3 +244,25 @@ static void redirect_output(int new_fd, int current_fd) {
   }
   //close(new_fd);
 }
+
+std::ostream &operator<<(std::ostream &os, const Process::State &state) {
+  switch (state) {
+    case Process::State::Waiting:
+      os << "Waiting";
+      break;
+    case Process::State::Starting:
+      os << "Starting";
+      break;
+    case Process::State::Running:
+      os << "Running";
+      break;
+    case Process::State::Exiting:
+      os << "Exiting";
+      break;
+    case Process::State::Stopped:
+      os << "Stopped";
+      break;
+  }
+  return os;
+}
+
