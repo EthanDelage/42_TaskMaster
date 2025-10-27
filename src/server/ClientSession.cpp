@@ -5,7 +5,8 @@
 
 char ClientSession::_buffer[SOCKET_BUFFER_SIZE];
 
-ClientSession::ClientSession(const int client_fd) : Socket(client_fd) {}
+ClientSession::ClientSession(const int client_fd)
+    : Socket(client_fd), _reload_request(false) {}
 
 std::string ClientSession::recv_command() const {
   std::string buffer_str;
@@ -31,4 +32,10 @@ void ClientSession::send_response(const std::string &response) const {
   if (write(response) == -1) {
     throw std::runtime_error("send_response()");
   }
+}
+
+bool ClientSession::get_reload_request() const { return _reload_request; }
+
+void ClientSession::set_reload_request(const bool reload) {
+  _reload_request = reload;
 }
