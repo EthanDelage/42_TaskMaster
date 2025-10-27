@@ -50,6 +50,7 @@ public:
   std::chrono::steady_clock::time_point get_start_timestamp() const;
   size_t get_num_retries() const;
   State get_state() const;
+  State get_previous_state() const;
   status_t get_status() const;
   Command get_pending_command() const;
   const int *get_stdout_pipe() const;
@@ -57,6 +58,7 @@ public:
 
   void set_num_retries(size_t startretries);
   void set_state(State state);
+  void set_previous_state(State state);
   void set_pending_command(Command);
 
 private:
@@ -71,6 +73,7 @@ private:
   std::chrono::steady_clock::time_point _stop_timestamp;
   size_t _num_retries;
   State _state;
+  State _previous_state;
   status_t _status;
   Command _pending_command;
   int _stdout_pipe[2];
@@ -80,5 +83,7 @@ private:
   std::vector<int> _attached_client;
   std::string _cmd_path;
 };
+
+std::ostream &operator<<(std::ostream &os, const Process::State &state);
 
 #endif // PROCESS_HPP
