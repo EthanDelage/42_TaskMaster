@@ -29,14 +29,6 @@ void Taskmaster::loop() {
   int result;
 
   TaskManager task_manager(_process_pool, _process_pool_mutex);
-  // for (auto& [name, processes] : _process_pool) {
-  //   for (auto& process : processes) {
-  //     if (process.get_program_config().get_autostart()) {
-  //       if (process.start() == -1)
-  //         return;
-  //     }
-  //   }
-  // }
   set_sighup_handler();
   if (_server_socket.listen(BACKLOG) == -1) {
     return;
@@ -71,14 +63,15 @@ void Taskmaster::init_process_pool(
     std::shared_ptr<ProgramConfig> shared_program_config;
     shared_program_config =
         std::make_shared<ProgramConfig>(std::move(program_config));
-    for (size_t i = 0; i < program_config.get_numprocs(); ++i) {
+    for (size_t i = 0; i < shared_program_config->get_numprocs(); ++i) {
       processes.emplace_back(shared_program_config);
       add_poll_fd({processes[i].get_stdout_pipe()[PIPE_READ], POLLIN, 0},
                   {FdType::Process});
       add_poll_fd({processes[i].get_stderr_pipe()[PIPE_READ], POLLIN, 0},
                   {FdType::Process});
     }
-    _process_pool.insert({program_config.get_name(), std::move(processes)});
+    std::cout << "Inserting " << shared_program_config->get_name() << std::endl;
+    _process_pool.insert({shared_program_config->get_name(), std::move(processes)});
   }
 }
 
