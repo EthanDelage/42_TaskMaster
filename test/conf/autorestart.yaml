@@ -1,0 +1,19 @@
+programs:
+  autorestart_false:
+    cmd: "sleep 1"
+    autorestart: false
+  autorestart_true:
+    cmd: "sleep 1"
+    autorestart: true
+  autorestart_expected:
+    cmd: "./test/bin/autorestart_expected"
+    autorestart: unexpected
+    exitcodes:
+      - 1
+      - 2
+  autorestart_unexpected:
+    cmd: "./test/bin/autorestart_unexpected"
+    autorestart: unexpected
+    exitcodes:
+      - 1
+      - 2
