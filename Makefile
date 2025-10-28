@@ -33,3 +33,4 @@ format:
 compile_commands:
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_EXPORT_COMPILE_COMMANDS=1
 
+include test/test.mk
