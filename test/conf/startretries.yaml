@@ -1,21 +1,37 @@
 programs:
-  # startretries_0:
-  #   cmd: "sleep 1"
-  #   starttime: 2
-  #   startretries: 0
-  #   autorestart: false
-  # startretries_0_autorestart:
-  #   cmd: "sleep 1"
-  #   starttime: 2
-  #   startretries: 0
-  #   autorestart: true 
+  # These two tests should have the same behavior since autorestart have no effect on aborted processes
+  startretries_0:
+    cmd: "sleep 1"
+    starttime: 2
+    startretries: 0
+    autorestart: false
+  startretries_0_autorestart:
+    cmd: "sleep 1"
+    starttime: 2
+    startretries: 0
+    autorestart: true 
+
+  # These two tests should have the same behavior since autorestart have no effect on aborted processes
   startretries_2:
     cmd: "sleep 1"
     starttime: 2
     startretries: 2
+    autorestart: false
+  startretries_2_autorestart:
+    cmd: "sleep 1"
+    starttime: 2
+    startretries: 2
     autorestart: true
-  # startretries_running:
-  #   cmd: "sleep 2"
-  #   starttime: 1
-  #   startretries: 1
-  #   autorestart: false
+
+  # Should do Waiting>Starting>Running>Stopped without restarting
+  startretries_running:
+    cmd: "sleep 2"
+    starttime: 1
+    startretries: 1
+    autorestart: false
+  # Should do Waiting>Starting>Running>Stopped then restart
+  startretries_running_autorestart:
+    cmd: "sleep 2"
+    starttime: 1
+    startretries: 1
+    autorestart: true
