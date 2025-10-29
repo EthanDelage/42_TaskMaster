@@ -1,17 +1,17 @@
 #include "server/TaskManager.hpp"
 
 #include "server/Process.hpp"
-#include "server/config/ProgramConfig.hpp"
+#include "server/ConfigParser.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <thread>
 
-static void fsm_run_task(Process &process, const ProgramConfig &config);
-static void fsm_transit_state(Process &process, const ProgramConfig &config);
-static void fsm_waiting_task(Process &process, const ProgramConfig &config);
-static void fsm_starting_task(Process &process, const ProgramConfig &config);
+static void fsm_run_task(Process &process, const process_config_t &config);
+static void fsm_transit_state(Process &process, const process_config_t &config);
+static void fsm_waiting_task(Process &process, const process_config_t &config);
+static void fsm_starting_task(Process &process, const process_config_t &config);
 static void fsm_running_task(Process &process);
-static void fsm_exiting_task(Process &process, const ProgramConfig &config);
+static void fsm_exiting_task(Process &process, const process_config_t &config);
 static void fsm_stopped_task(Process &process);
 
 TaskManager::TaskManager(
@@ -46,12 +46,12 @@ void TaskManager::work() {
 }
 
 void TaskManager::fsm(Process &process) {
-  const ProgramConfig &config = process.get_program_config();
+  const process_config_t &config = process.get_process_config();
   fsm_run_task(process, config);
   fsm_transit_state(process, config);
 }
 
-static void fsm_run_task(Process &process, const ProgramConfig &config) {
+static void fsm_run_task(Process &process, const process_config_t &config) {
   switch (process.get_state()) {
   case Process::State::Waiting:
     fsm_waiting_task(process, config);
@@ -71,17 +71,17 @@ static void fsm_run_task(Process &process, const ProgramConfig &config) {
   }
 }
 
-static void fsm_transit_state(Process &process, const ProgramConfig &config) {
+static void fsm_transit_state(Process &process, const process_config_t &config) {
   Process::status_t status;
   Process::State next_state;
   switch (process.get_state()) {
   case Process::State::Waiting:
-    if (!config.get_autostart()) {
-      std::cout << "[TaskManager] " << config.get_name() << ":"
+    if (!config.autostart) {
+      std::cout << "[TaskManager] " << config.name << ":"
                 << " (Waiting)>(Stopped)" << std::endl;
       next_state = Process::State::Stopped;
     } else {
-      std::cout << "[TaskManager] " << config.get_name() << ":"
+      std::cout << "[TaskManager] " << config.name << ":"
                 << " (Waiting)>(Starting)" << std::endl;
       next_state = Process::State::Starting;
     }
@@ -89,21 +89,21 @@ static void fsm_transit_state(Process &process, const ProgramConfig &config) {
   case Process::State::Starting:
     next_state = Process::State::Starting;
     status = process.get_status();
-    if (config.get_starttime() == 0) {
-      std::cout << "[TaskManager] " << config.get_name() << ":"
+    if (config.starttime == 0) {
+      std::cout << "[TaskManager] " << config.name << ":"
                 << " (Starting)>(Running)" << std::endl;
       next_state = Process::State::Running;
     } else if (!status.running) {
-      std::cout << "[TaskManager] " << config.get_name() << ":"
+      std::cout << "[TaskManager] " << config.name << ":"
                 << " (Starting)>(Stopped)" << std::endl;
       next_state = Process::State::Stopped;
-    } else if (process.get_runtime() >= config.get_starttime()) {
-      std::cout << "[TaskManager] " << config.get_name() << ":"
+    } else if (process.get_runtime() >= config.starttime) {
+      std::cout << "[TaskManager] " << config.name << ":"
                 << " (Starting)>(Running)" << std::endl;
       next_state = Process::State::Running;
     } else if (process.get_pending_command() == Process::Command::Restart ||
                process.get_pending_command() == Process::Command::Stop) {
-      std::cout << "[TaskManager] " << config.get_name() << ":"
+      std::cout << "[TaskManager] " << config.name << ":"
                 << " (Starting)>(Exiting)" << std::endl;
       next_state = Process::State::Exiting;
     }
@@ -112,12 +112,12 @@ static void fsm_transit_state(Process &process, const ProgramConfig &config) {
     next_state = Process::State::Running;
     status = process.get_status();
     if (!status.running) {
-      std::cout << "[TaskManager] " << config.get_name() << ":"
+      std::cout << "[TaskManager] " << config.name << ":"
                 << " (Running)>(Stopped)" << std::endl;
       next_state = Process::State::Stopped;
     } else if (process.get_pending_command() == Process::Command::Restart ||
                process.get_pending_command() == Process::Command::Stop) {
-      std::cout << "[TaskManager] " << config.get_name() << ":"
+      std::cout << "[TaskManager] " << config.name << ":"
                 << " (Running)>(Exiting)" << std::endl;
       next_state = Process::State::Exiting;
     }
@@ -139,9 +139,9 @@ static void fsm_transit_state(Process &process, const ProgramConfig &config) {
                                          // needs autorestart
         (process.get_previous_state() == Process::State::Starting &&
          process.get_num_retries() <=
-             config.get_startretries())) { // Process was unsuccessfully started
+             config.startretries)) { // Process was unsuccessfully started
                                            // and num_retries <= startretries
-      std::cout << "[TaskManager] " << config.get_name() << ":"
+      std::cout << "[TaskManager] " << config.name << ":"
                 << " (Stopped)>(Starting)" << std::endl;
       next_state = Process::State::Starting;
     }
@@ -151,13 +151,13 @@ static void fsm_transit_state(Process &process, const ProgramConfig &config) {
   process.set_state(next_state);
 }
 
-static void fsm_waiting_task(Process &process, const ProgramConfig &config) {
-  if (config.get_autostart()) {
+static void fsm_waiting_task(Process &process, const process_config_t &config) {
+  if (config.autostart) {
     process.start();
   }
 }
 
-static void fsm_starting_task(Process &process, const ProgramConfig &config) {
+static void fsm_starting_task(Process &process, const process_config_t &config) {
   if (process.get_state() != process.get_previous_state()) {
     if (process.get_pending_command() == Process::Command::Start ||
         process.get_pending_command() == Process::Command::Restart) {
@@ -168,7 +168,7 @@ static void fsm_starting_task(Process &process, const ProgramConfig &config) {
     }
     process.start();
   }
-  if (config.get_starttime() !=
+  if (config.starttime !=
       0) { // Wait the process only if starttime is set
     process.update_status();
   }
@@ -180,9 +180,9 @@ static void fsm_starting_task(Process &process, const ProgramConfig &config) {
 
 static void fsm_running_task(Process &process) { process.update_status(); }
 
-static void fsm_exiting_task(Process &process, const ProgramConfig &config) {
+static void fsm_exiting_task(Process &process, const process_config_t &config) {
   process.update_status();
-  if (process.get_stoptime() >= config.get_stoptime() &&
+  if (process.get_stoptime() >= config.stoptime &&
       process.get_status().running) {
     process.kill();
     process.update_status();
