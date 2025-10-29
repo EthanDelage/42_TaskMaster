@@ -1,7 +1,7 @@
 #include "server/Process.hpp"
 
 #include "common/utils.hpp"
-#include "server/config/ProgramConfig.hpp"
+#include "server/ConfigParser.hpp"
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
@@ -17,35 +17,35 @@ static void redirect_output(int pipe_fd, int output_fd);
 
 extern char **environ; // envp
 
-Process::Process(std::shared_ptr<const ProgramConfig> program_config)
-    : _program_config(std::move(program_config)),
+Process::Process(std::shared_ptr<const process_config_t> process_config)
+    : _process_config(process_config),
       _pid(-1),
       _num_retries(0),
       _state(State::Waiting),
       _previous_state(State::Waiting),
       _pending_command(Command::None),
-      _cmd_path(get_cmd_path(_program_config->get_cmd()[0])) {
+      _cmd_path(get_cmd_path(_process_config->cmd->we_wordv[0])) {
   if (pipe(_stdout_pipe) == -1) {
     throw std::runtime_error("Error: Process() failed to create stdout pipe");
   }
   if (pipe(_stderr_pipe) == -1) {
     throw std::runtime_error("Error: Process() failed to create stderr pipe");
   }
-  std::string stdout_path = _program_config->get_stdout();
+  std::string stdout_path = _process_config->stdout;
   _stdout_fd = stdout_path.empty() ? open("/dev/null", O_WRONLY)
                                    : open(stdout_path.c_str(),
                                           O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (_stdout_fd == -1) {
     throw std::runtime_error(std::string("open") + strerror(errno));
   }
-  std::string stderr_path = _program_config->get_stderr();
+  std::string stderr_path = _process_config->stderr;
   _stderr_fd = stderr_path.empty() ? open("/dev/null", O_WRONLY)
                                    : open(stderr_path.c_str(),
                                           O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (_stderr_fd == -1) {
     throw std::runtime_error(std::string("open") + strerror(errno));
   }
-  std::cout << "Process " << _program_config->get_name() << " created"
+  std::cout << "Process " << _process_config->name << " created"
             << std::endl;
 }
 
@@ -59,7 +59,7 @@ Process::~Process() {
 }
 
 int Process::start() {
-  std::cout << "[Taskmaster] Starting " << _program_config->get_name() << " ..."
+  std::cout << "[Taskmaster] Starting " << _process_config->name << " ..."
             << std::endl;
   _pid = fork();
   if (_pid == -1) {
@@ -75,7 +75,7 @@ int Process::start() {
   setup_env();
   setup_outputs();
   setup_workingdir();
-  if (execve(_cmd_path.c_str(), _program_config->get_cmd(), environ) == -1) {
+  if (execve(_cmd_path.c_str(), _process_config->cmd->we_wordv, environ) == -1) {
     perror("execve");
     return -1;
   }
@@ -123,11 +123,11 @@ int Process::update_status(void) {
  * @brief Return true if the process needs to be autorestarted.
  **/
 bool Process::check_autorestart(void) {
-  AutoRestart autorestart = _program_config->get_autorestart();
+  AutoRestart autorestart = _process_config->autorestart;
   if (autorestart == AutoRestart::True) {
     return true;
   } else if (autorestart == AutoRestart::Unexpected) {
-    for (const auto it : _program_config->get_exitcodes()) {
+    for (const auto it : _process_config->exitcodes) {
       if (it == static_cast<int>(_status.exitstatus)) {
         // If the status is found in the list of expected status
         return false;
@@ -161,7 +161,7 @@ unsigned long Process::get_stoptime(void) {
 
 pid_t Process::get_pid() const { return _pid; }
 
-const ProgramConfig &Process::get_program_config() { return *_program_config; }
+const process_config_t &Process::get_process_config() { return *_process_config; }
 
 std::chrono::steady_clock::time_point Process::get_start_timestamp() const {
   return _start_timestamp;
@@ -216,16 +216,16 @@ std::string Process::get_cmd_path(const std::string &cmd) {
 }
 
 void Process::setup_env() const {
-  for (std::pair<std::string, std::string> env : _program_config->get_env()) {
+  for (std::pair<std::string, std::string> env : _process_config->env) {
     setenv(env.first.c_str(), env.second.c_str(), 1);
   }
 }
 
 void Process::setup_workingdir() const {
-  if (_program_config->get_workingdir().empty()) {
+  if (_process_config->workingdir.empty()) {
     return;
   }
-  if (chdir(_program_config->get_workingdir().c_str()) == -1) {
+  if (chdir(_process_config->workingdir.c_str()) == -1) {
     throw std::runtime_error(std::string("chdir:") + strerror(errno));
   }
 }
