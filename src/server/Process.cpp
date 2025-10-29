@@ -122,8 +122,8 @@ int Process::update_status(void) {
 }
 
 /**
-  * @brief Return true if the process needs to be autorestarted.
-**/
+ * @brief Return true if the process needs to be autorestarted.
+ **/
 bool Process::check_autorestart(void) {
   AutoRestart autorestart = _program_config->get_autorestart();
   if (autorestart == AutoRestart::True) {
@@ -142,12 +142,12 @@ bool Process::check_autorestart(void) {
     return true;
   }
   return false;
-} 
+}
 
 unsigned long Process::get_runtime(void) {
   long runtime = std::chrono::duration_cast<std::chrono::seconds>(
-      std::chrono::steady_clock::now() - _start_timestamp)
-    .count();
+                     std::chrono::steady_clock::now() - _start_timestamp)
+                     .count();
   if (runtime < 0) {
     return 0;
   }
@@ -156,8 +156,8 @@ unsigned long Process::get_runtime(void) {
 
 unsigned long Process::get_stoptime(void) {
   long stoptime = std::chrono::duration_cast<std::chrono::seconds>(
-      std::chrono::steady_clock::now() - _stop_timestamp)
-    .count();
+                      std::chrono::steady_clock::now() - _stop_timestamp)
+                      .count();
   if (stoptime < 0) {
     return 0;
   }
@@ -180,7 +180,9 @@ Process::State Process::get_previous_state() const { return _previous_state; }
 
 Process::status_t Process::get_status() const { return _status; }
 
-Process::Command Process::get_pending_command() const { return _pending_command; }
+Process::Command Process::get_pending_command() const {
+  return _pending_command;
+}
 
 const int *Process::get_stdout_pipe() const { return _stdout_pipe; }
 
@@ -242,27 +244,26 @@ static void redirect_output(int new_fd, int current_fd) {
   if (dup2(new_fd, current_fd) == -1) {
     throw std::runtime_error(std::string("dup2:") + strerror(errno));
   }
-  //close(new_fd);
+  // close(new_fd);
 }
 
 std::ostream &operator<<(std::ostream &os, const Process::State &state) {
   switch (state) {
-    case Process::State::Waiting:
-      os << "Waiting";
-      break;
-    case Process::State::Starting:
-      os << "Starting";
-      break;
-    case Process::State::Running:
-      os << "Running";
-      break;
-    case Process::State::Exiting:
-      os << "Exiting";
-      break;
-    case Process::State::Stopped:
-      os << "Stopped";
-      break;
+  case Process::State::Waiting:
+    os << "Waiting";
+    break;
+  case Process::State::Starting:
+    os << "Starting";
+    break;
+  case Process::State::Running:
+    os << "Running";
+    break;
+  case Process::State::Exiting:
+    os << "Exiting";
+    break;
+  case Process::State::Stopped:
+    os << "Stopped";
+    break;
   }
   return os;
 }
-
