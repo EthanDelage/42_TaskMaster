@@ -1,4 +1,4 @@
-programs:
+process:
   # These two tests should have the same behavior since autorestart have no effect on aborted processes
   startretries_0:
     cmd: "sleep 1"

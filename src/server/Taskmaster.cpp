@@ -1,6 +1,7 @@
 #include "server/Taskmaster.hpp"
 #include "server/Process.hpp"
-#include "server/config/ProgramConfig.hpp"
+#include "server/ConfigParser.hpp"
+#include "server/TaskManager.hpp"
 
 #include <csignal>
 #include <iostream>
@@ -15,11 +16,11 @@ static void sighup_handler(int);
 
 volatile sig_atomic_t sighup_received_g = 0;
 
-Taskmaster::Taskmaster(const Config &config)
+Taskmaster::Taskmaster(const ConfigParser &config)
     : _config(config),
       _command_manager(get_commands_callback()),
       _server_socket(SOCKET_PATH_NAME) {
-  std::vector<ProgramConfig> program_configs = config.parse();
+  std::vector<process_config_s> program_configs = config.parse();
 
   add_poll_fd({_server_socket.get_fd(), POLLIN, 0}, {FdType::Server});
   init_process_pool(program_configs);
@@ -57,22 +58,22 @@ void Taskmaster::loop() {
 }
 
 void Taskmaster::init_process_pool(
-    std::vector<ProgramConfig> &programs_configs) {
+    std::vector<process_config_s> &programs_configs) {
   for (auto &program_config : programs_configs) {
     std::vector<Process> processes;
-    std::shared_ptr<ProgramConfig> shared_program_config;
+    std::shared_ptr<process_config_s> shared_program_config;
     shared_program_config =
-        std::make_shared<ProgramConfig>(std::move(program_config));
-    for (size_t i = 0; i < shared_program_config->get_numprocs(); ++i) {
+        std::make_shared<process_config_s>(std::move(program_config));
+    for (size_t i = 0; i < shared_program_config->numprocs; ++i) {
       processes.emplace_back(shared_program_config);
       add_poll_fd({processes[i].get_stdout_pipe()[PIPE_READ], POLLIN, 0},
                   {FdType::Process});
       add_poll_fd({processes[i].get_stderr_pipe()[PIPE_READ], POLLIN, 0},
                   {FdType::Process});
     }
-    std::cout << "Inserting " << shared_program_config->get_name() << std::endl;
+    std::cout << "Inserting " << shared_program_config->name << std::endl;
     _process_pool.insert(
-        {shared_program_config->get_name(), std::move(processes)});
+        {shared_program_config->name, std::move(processes)});
   }
 }
 

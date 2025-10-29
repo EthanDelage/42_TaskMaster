@@ -1,4 +1,4 @@
-programs:
+process:
   test1:
     cmd: "echo test1"
   test2:

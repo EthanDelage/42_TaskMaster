@@ -1,5 +1,5 @@
 #include "server/Taskmaster.hpp"
-#include "server/config/Config.hpp"
+#include "server/ConfigParser.hpp"
 #include <csignal>
 #include <cstdlib>
 #include <exception>
@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     return 0;
   }
   try {
-    Config config(argv[1]);
+    ConfigParser config(argv[1]);
     Taskmaster taskmaster(config);
     taskmaster.loop();
   } catch (const std::exception &e) {

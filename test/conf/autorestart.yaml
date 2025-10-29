@@ -1,4 +1,4 @@
-programs:
+process:
   autorestart_false:
     cmd: "sleep 1"
     autorestart: false

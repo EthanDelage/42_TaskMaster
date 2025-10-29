@@ -3,8 +3,7 @@ add_executable(server
         Process.cpp
         Taskmaster.cpp
         TaskManager.cpp
-        config/Config.cpp
-        config/ProgramConfig.cpp
+        ConfigParser.cpp
         UnixSocketServer.cpp
         ClientSession.cpp
 )

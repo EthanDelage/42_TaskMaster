@@ -1,7 +1,7 @@
 #ifndef PROCESS_HPP
 #define PROCESS_HPP
 
-#include "server/config/ProgramConfig.hpp"
+#include "server/ConfigParser.hpp"
 #include <chrono>
 #include <memory>
 #include <string>
@@ -33,7 +33,7 @@ public:
     None,
   };
 
-  Process(std::shared_ptr<const ProgramConfig> program_config);
+  Process(std::shared_ptr<const process_config_t> process_config);
   ~Process();
 
   int start();
@@ -44,7 +44,7 @@ public:
   unsigned long get_runtime(void);
   unsigned long get_stoptime(void);
 
-  const ProgramConfig &get_program_config();
+  const process_config_t &get_process_config();
   pid_t get_pid() const;
   std::chrono::steady_clock::time_point get_start_timestamp() const;
   size_t get_num_retries() const;
@@ -66,7 +66,7 @@ private:
   void setup_workingdir() const;
   void setup_outputs();
 
-  std::shared_ptr<const ProgramConfig> _program_config;
+  std::shared_ptr<const process_config_s> _process_config;
   pid_t _pid;
   std::chrono::steady_clock::time_point _start_timestamp;
   std::chrono::steady_clock::time_point _stop_timestamp;
