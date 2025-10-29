@@ -3,6 +3,7 @@
 #include <yaml-cpp/yaml.h>
 #include <filesystem>
 #include <csignal>
+#include <unordered_set>
 
 #define PROCESS_NAME_MAX_LENGTH 64
 
@@ -29,20 +30,24 @@ ConfigParser::ConfigParser(std::string config_path)
     : _config_path(std::move(config_path)) {}
 
 std::vector<process_config_s> ConfigParser::parse() const {
-  std::string process_name;
   std::vector<process_config_s> process_configs;
+  std::unordered_set<std::string> seen_names;
+
   YAML::Node root = YAML::LoadFile(_config_path);
 
   if (!root["process"]) {
     throw std::runtime_error("Config: Missing 'process' section in config");
   }
   for (const auto &node: root["process"]) {
-    process_name = node.first.as<std::string>();
+    std::string process_name = node.first.as<std::string>();
     if (!is_valid_process_name(process_name)) {
       throw std::runtime_error(
           "Config: process names must contain only letters, numbers and "
           "underscores and must be less than " +
           std::to_string(PROCESS_NAME_MAX_LENGTH) + "characters long");
+    }
+    if (!seen_names.insert(process_name).second) {
+      throw std::runtime_error("Config: duplicate process name '" + process_name + "'");
     }
     YAML::Node process_node = node.second;
     // TODO: try catch
@@ -53,9 +58,12 @@ std::vector<process_config_s> ConfigParser::parse() const {
   return process_configs;
 }
 
+#include <iostream>
+
 static process_config_t parse_process_config(std::string &&name, const YAML::Node &config_node) {
   process_config_t process_config;
 
+  std::cout << "Now parsing " << name << std::endl;
   process_config.name = name;
   process_config.cmd = std::unique_ptr<wordexp_t, WordexpDestructor>(new wordexp_t);
   parse_cmd(config_node, process_config);
@@ -191,10 +199,13 @@ static void parse_env(const YAML::Node &config_node, process_config_t &process_c
   if (!config_node["env"]) {
     return;
   }
-
-  for (const auto &entry : config_node["env"]) {
-    process_config.env.emplace_back(entry.first.as<std::string>(),
-                      entry.second.as<std::string>());
+  try {
+    for (const auto &entry : config_node["env"]) {
+      process_config.env.emplace_back(entry.first.as<std::string>(),
+          entry.second.as<std::string>());
+    }
+  } catch (std::exception &e) {
+    throw std::runtime_error(std::string("ProgramConfig: Invalid env value: ") + e.what());
   }
 }
 
