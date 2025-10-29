@@ -88,7 +88,11 @@ static void parse_cmd(const YAML::Node &config_node, process_config_t &process_c
   if (!config_node["cmd"]) {
     throw std::runtime_error("ProgramConfig: Missing required 'cmd' field");
   }
-  wordexp(config_node["cmd"].as<std::string>().c_str(), process_config.cmd.get(), 0);
+  if (wordexp(config_node["cmd"].as<std::string>().c_str(), process_config.cmd.get(), 0) != 0) {
+    throw std::runtime_error("ProgramConfig: Failed to parse 'cmd' field");
+  }
+}
+
 static void parse_cmd_path(process_config_t &process_config) {
   if (process_config.cmd->we_wordc < 1) {
     process_config.cmd_path = "";
