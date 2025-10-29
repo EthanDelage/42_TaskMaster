@@ -1,6 +1,6 @@
 #include "server/Taskmaster.hpp"
-#include "server/Process.hpp"
 #include "server/ConfigParser.hpp"
+#include "server/Process.hpp"
 #include "server/TaskManager.hpp"
 
 #include <csignal>
@@ -72,8 +72,7 @@ void Taskmaster::init_process_pool(
                   {FdType::Process});
     }
     std::cout << "Inserting " << shared_program_config->name << std::endl;
-    _process_pool.insert(
-        {shared_program_config->name, std::move(processes)});
+    _process_pool.insert({shared_program_config->name, std::move(processes)});
   }
 }
 
