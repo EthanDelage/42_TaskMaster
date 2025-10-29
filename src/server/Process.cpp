@@ -43,8 +43,7 @@ Process::Process(std::shared_ptr<const process_config_t> process_config)
   if (_stderr_fd == -1) {
     throw std::runtime_error(std::string("open") + strerror(errno));
   }
-  std::cout << "Process " << _process_config->name << " created"
-            << std::endl;
+  std::cout << "Process " << _process_config->name << " created" << std::endl;
 }
 
 Process::~Process() {
@@ -73,7 +72,8 @@ int Process::start() {
   setup_env();
   setup_outputs();
   setup_workingdir();
-  if (execve(_process_config->cmd_path.c_str(), _process_config->cmd->we_wordv, environ) == -1) {
+  if (execve(_process_config->cmd_path.c_str(), _process_config->cmd->we_wordv,
+             environ) == -1) {
     perror("execve");
     return -1;
   }
@@ -164,7 +164,9 @@ unsigned long Process::get_stoptime(void) {
 
 pid_t Process::get_pid() const { return _pid; }
 
-const process_config_t &Process::get_process_config() { return *_process_config; }
+const process_config_t &Process::get_process_config() {
+  return *_process_config;
+}
 
 std::chrono::steady_clock::time_point Process::get_start_timestamp() const {
   return _start_timestamp;
