@@ -1,6 +1,5 @@
 #include "server/Process.hpp"
 
-#include "common/utils.hpp"
 #include "server/ConfigParser.hpp"
 #include <chrono>
 #include <cstdlib>
@@ -23,8 +22,7 @@ Process::Process(std::shared_ptr<const process_config_t> process_config)
       _num_retries(0),
       _state(State::Waiting),
       _previous_state(State::Waiting),
-      _pending_command(Command::None),
-      _cmd_path(get_cmd_path(_process_config->cmd->we_wordv[0])) {
+      _pending_command(Command::None) {
   if (pipe(_stdout_pipe) == -1) {
     throw std::runtime_error("Error: Process() failed to create stdout pipe");
   }
@@ -75,7 +73,7 @@ int Process::start() {
   setup_env();
   setup_outputs();
   setup_workingdir();
-  if (execve(_cmd_path.c_str(), _process_config->cmd->we_wordv, environ) == -1) {
+  if (execve(_process_config->cmd_path.c_str(), _process_config->cmd->we_wordv, environ) == -1) {
     perror("execve");
     return -1;
   }
@@ -193,26 +191,6 @@ void Process::set_previous_state(State state) { _previous_state = state; }
 
 void Process::set_pending_command(Command pending_command) {
   _pending_command = pending_command;
-}
-
-std::string Process::get_cmd_path(const std::string &cmd) {
-  if (cmd.find('/') != std::string::npos) {
-    return cmd;
-  }
-
-  char *env_path = std::getenv("PATH");
-  if (env_path == nullptr) {
-    throw std::runtime_error("Error: please define the PATH env variable");
-  }
-  std::vector<std::string> path_list = split(env_path, ':');
-
-  for (const auto &path : path_list) {
-    std::string cmd_path = path + '/' + cmd;
-    if (access(cmd_path.c_str(), X_OK) == 0) {
-      return cmd_path;
-    }
-  }
-  throw std::runtime_error("Error: command not found: " + cmd);
 }
 
 void Process::setup_env() const {
