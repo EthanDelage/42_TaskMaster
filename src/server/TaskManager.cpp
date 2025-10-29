@@ -11,7 +11,7 @@ static void fsm_transit_state(Process &process, const ProgramConfig &config);
 static void fsm_waiting_task(Process &process, const ProgramConfig &config);
 static void fsm_starting_task(Process &process, const ProgramConfig &config);
 static void fsm_running_task(Process &process);
-static void fsm_exiting_task(Process &process);
+static void fsm_exiting_task(Process &process, const ProgramConfig &config);
 static void fsm_stopped_task(Process &process);
 
 TaskManager::TaskManager(std::unordered_map<std::string, std::vector<Process>>& process_pool, std::mutex& process_pool_mutex)
@@ -61,7 +61,7 @@ static void fsm_run_task(Process &process, const ProgramConfig &config) {
       fsm_running_task(process);
       break;
     case Process::State::Exiting:
-      fsm_exiting_task(process);
+      fsm_exiting_task(process, config);
       break;
     case Process::State::Stopped:
       fsm_stopped_task(process);
@@ -116,16 +116,12 @@ static void fsm_transit_state(Process &process, const ProgramConfig &config) {
       status = process.get_status();
       if (!status.running) {
         next_state = Process::State::Stopped;
-      } else if (process.get_stoptime() >= config.get_stoptime()) {
-        next_state = Process::State::Stopped;
       }
       break;
     case Process::State::Stopped:
       next_state = Process::State::Stopped;
       status = process.get_status();
-      if (status.running) {
-        break; // TODO: Make sure a process is not running when entering Stopped state
-      } else if ((process.get_pending_command() == Process::Command::Start || process.get_pending_command() == Process::Command::Restart) ||
+      if ((process.get_pending_command() == Process::Command::Start || process.get_pending_command() == Process::Command::Restart) ||
           (process.get_previous_state() == Process::State::Running && process.check_autorestart()) || // Process was successfully started and needs autorestart
           (process.get_previous_state() == Process::State::Starting && process.get_num_retries() <= config.get_startretries())) { // Process was unsuccessfully started and num_retries <= startretries
         std::cout << "[TaskManager] " << config.get_name() << ":" << " (Stopped)>(Starting)" << std::endl;
@@ -166,16 +162,15 @@ static void fsm_running_task(Process &process) {
   process.update_status();
 }
 
-static void fsm_exiting_task(Process &process) {
+static void fsm_exiting_task(Process &process, const ProgramConfig &config) {
   process.update_status();
+  if (process.get_stoptime() >= config.get_stoptime() && process.get_status().running) {
+    process.kill();
+    process.update_status();
+  }
 }
 
 static void fsm_stopped_task(Process &process) {
-  if (process.get_previous_state() == Process::State::Exiting && process.get_status().running) {
-    process.kill();
-    process.update_status();
-    return;
-  }
   if (process.get_pending_command() == Process::Command::Stop) {
     process.set_pending_command(Process::Command::None);
   }
