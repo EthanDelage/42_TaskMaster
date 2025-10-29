@@ -71,7 +71,8 @@ void Taskmaster::init_process_pool(
                   {FdType::Process});
     }
     std::cout << "Inserting " << shared_program_config->get_name() << std::endl;
-    _process_pool.insert({shared_program_config->get_name(), std::move(processes)});
+    _process_pool.insert(
+        {shared_program_config->get_name(), std::move(processes)});
   }
 }
 

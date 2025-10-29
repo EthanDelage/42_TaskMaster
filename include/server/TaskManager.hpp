@@ -10,12 +10,14 @@
 
 class TaskManager {
 public:
-  explicit TaskManager(std::unordered_map<std::string, std::vector<Process>>& process_pool, std::mutex& process_pool_mutex);
+  explicit TaskManager(
+      std::unordered_map<std::string, std::vector<Process>> &process_pool,
+      std::mutex &process_pool_mutex);
   ~TaskManager();
 
 private:
-  std::unordered_map<std::string, std::vector<Process>>& _process_pool;
-  std::mutex& _process_pool_mutex;
+  std::unordered_map<std::string, std::vector<Process>> &_process_pool;
+  std::mutex &_process_pool_mutex;
   std::thread _worker_thread;
   std::atomic<bool> _stop_token;
 
