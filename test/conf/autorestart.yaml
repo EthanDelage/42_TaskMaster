@@ -5,13 +5,13 @@ programs:
   autorestart_true:
     cmd: "sleep 1"
     autorestart: true
-  autorestart_expected:
+  autorestart_expected: # Should not restart
     cmd: "./test/bin/autorestart_expected"
     autorestart: unexpected
     exitcodes:
       - 1
       - 2
-  autorestart_unexpected:
+  autorestart_unexpected: # Should restart
     cmd: "./test/bin/autorestart_unexpected"
     autorestart: unexpected
     exitcodes:
