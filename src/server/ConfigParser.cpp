@@ -2,29 +2,44 @@
 
 #include "common/utils.hpp"
 
-#include <yaml-cpp/yaml.h>
-#include <filesystem>
 #include <csignal>
+#include <filesystem>
 #include <unordered_set>
+#include <yaml-cpp/yaml.h>
 
 #define PROCESS_NAME_MAX_LENGTH 64
 
-static process_config_t parse_process_config(std::string &&name, const YAML::Node &config_node);
-static void parse_cmd(const YAML::Node &config_node, process_config_t &process_config);
+static process_config_t parse_process_config(std::string &&name,
+                                             const YAML::Node &config_node);
+static void parse_cmd(const YAML::Node &config_node,
+                      process_config_t &process_config);
 static void parse_cmd_path(process_config_t &process_config);
-static void parse_workingdir(const YAML::Node &config_node, process_config_t &process_config);
-static void parse_stdout(const YAML::Node &config_node, process_config_t &process_config);
-static void parse_stderr(const YAML::Node &config_node, process_config_t &process_config);
-static void parse_stopsignal(const YAML::Node &config_node, process_config_t &process_config);
-static void parse_numprocs(const YAML::Node &config_node, process_config_t &process_config);
-static void parse_starttime(const YAML::Node &config_node, process_config_t &process_config);
-static void parse_startretries(const YAML::Node &config_node, process_config_t &process_config);
-static void parse_stoptime(const YAML::Node &config_node, process_config_t &process_config);
-static void parse_umask(const YAML::Node &config_node, process_config_t &process_config);
-static void parse_autostart(const YAML::Node &config_node, process_config_t &process_config);
-static void parse_autorestart(const YAML::Node &config_node, process_config_t &process_config);
-static void parse_env(const YAML::Node &config_node, process_config_t &process_config);
-static void parse_exitcodes(const YAML::Node &config_node, process_config_t &process_config);
+static void parse_workingdir(const YAML::Node &config_node,
+                             process_config_t &process_config);
+static void parse_stdout(const YAML::Node &config_node,
+                         process_config_t &process_config);
+static void parse_stderr(const YAML::Node &config_node,
+                         process_config_t &process_config);
+static void parse_stopsignal(const YAML::Node &config_node,
+                             process_config_t &process_config);
+static void parse_numprocs(const YAML::Node &config_node,
+                           process_config_t &process_config);
+static void parse_starttime(const YAML::Node &config_node,
+                            process_config_t &process_config);
+static void parse_startretries(const YAML::Node &config_node,
+                               process_config_t &process_config);
+static void parse_stoptime(const YAML::Node &config_node,
+                           process_config_t &process_config);
+static void parse_umask(const YAML::Node &config_node,
+                        process_config_t &process_config);
+static void parse_autostart(const YAML::Node &config_node,
+                            process_config_t &process_config);
+static void parse_autorestart(const YAML::Node &config_node,
+                              process_config_t &process_config);
+static void parse_env(const YAML::Node &config_node,
+                      process_config_t &process_config);
+static void parse_exitcodes(const YAML::Node &config_node,
+                            process_config_t &process_config);
 static bool is_valid_process_name(const std::string &name);
 static bool is_directory(std::string path);
 static bool is_file_writeable(std::string path);
@@ -41,7 +56,7 @@ std::vector<process_config_s> ConfigParser::parse() const {
   if (!root["process"]) {
     throw std::runtime_error("Config: Missing 'process' section in config");
   }
-  for (const auto &node: root["process"]) {
+  for (const auto &node : root["process"]) {
     std::string process_name = node.first.as<std::string>();
     if (!is_valid_process_name(process_name)) {
       throw std::runtime_error(
@@ -50,22 +65,26 @@ std::vector<process_config_s> ConfigParser::parse() const {
           std::to_string(PROCESS_NAME_MAX_LENGTH) + "characters long");
     }
     if (!seen_names.insert(process_name).second) {
-      throw std::runtime_error("Config: duplicate process name '" + process_name + "'");
+      throw std::runtime_error("Config: duplicate process name '" +
+                               process_name + "'");
     }
     YAML::Node process_node = node.second;
     // TODO: try catch
-    process_config_t process_config = parse_process_config(std::move(process_name), process_node);
+    process_config_t process_config =
+        parse_process_config(std::move(process_name), process_node);
 
     process_configs.push_back(std::move(process_config));
   }
   return process_configs;
 }
 
-static process_config_t parse_process_config(std::string &&name, const YAML::Node &config_node) {
+static process_config_t parse_process_config(std::string &&name,
+                                             const YAML::Node &config_node) {
   process_config_t process_config;
 
   process_config.name = name;
-  process_config.cmd = std::unique_ptr<wordexp_t, WordexpDestructor>(new wordexp_t);
+  process_config.cmd =
+      std::unique_ptr<wordexp_t, WordexpDestructor>(new wordexp_t);
   parse_cmd(config_node, process_config);
   parse_cmd_path(process_config);
   parse_workingdir(config_node, process_config);
@@ -84,11 +103,13 @@ static process_config_t parse_process_config(std::string &&name, const YAML::Nod
   return process_config;
 }
 
-static void parse_cmd(const YAML::Node &config_node, process_config_t &process_config) {
+static void parse_cmd(const YAML::Node &config_node,
+                      process_config_t &process_config) {
   if (!config_node["cmd"]) {
     throw std::runtime_error("ProgramConfig: Missing required 'cmd' field");
   }
-  if (wordexp(config_node["cmd"].as<std::string>().c_str(), process_config.cmd.get(), 0) != 0) {
+  if (wordexp(config_node["cmd"].as<std::string>().c_str(),
+              process_config.cmd.get(), 0) != 0) {
     throw std::runtime_error("ProgramConfig: Failed to parse 'cmd' field");
   }
 }
@@ -120,7 +141,8 @@ static void parse_cmd_path(process_config_t &process_config) {
   throw std::runtime_error("Error: command not found: " + cmd);
 }
 
-static void parse_workingdir(const YAML::Node &config_node, process_config_t &process_config) {
+static void parse_workingdir(const YAML::Node &config_node,
+                             process_config_t &process_config) {
   if (config_node["workingdir"]) {
     process_config.workingdir = config_node["workingdir"].as<std::string>();
     if (!is_directory(process_config.workingdir)) {
@@ -130,7 +152,8 @@ static void parse_workingdir(const YAML::Node &config_node, process_config_t &pr
   }
 }
 
-static void parse_stdout(const YAML::Node &config_node, process_config_t &process_config) {
+static void parse_stdout(const YAML::Node &config_node,
+                         process_config_t &process_config) {
   if (!config_node["stdout"]) {
     return;
   }
@@ -141,7 +164,8 @@ static void parse_stdout(const YAML::Node &config_node, process_config_t &proces
   }
 }
 
-static void parse_stderr(const YAML::Node &config_node, process_config_t &process_config) {
+static void parse_stderr(const YAML::Node &config_node,
+                         process_config_t &process_config) {
   if (!config_node["stderr"]) {
     return;
   }
@@ -152,7 +176,8 @@ static void parse_stderr(const YAML::Node &config_node, process_config_t &proces
   }
 }
 
-static void parse_stopsignal(const YAML::Node &config_node, process_config_t &process_config) {
+static void parse_stopsignal(const YAML::Node &config_node,
+                             process_config_t &process_config) {
   if (!config_node["stopsignal"]) {
     process_config.stopsignal = SIGSTOP;
     return;
@@ -175,38 +200,47 @@ static void parse_stopsignal(const YAML::Node &config_node, process_config_t &pr
   process_config.stopsignal = it->second;
 }
 
-static void parse_numprocs(const YAML::Node &config_node, process_config_t &process_config) {
+static void parse_numprocs(const YAML::Node &config_node,
+                           process_config_t &process_config) {
   process_config.numprocs =
       config_node["numprocs"] ? config_node["numprocs"].as<unsigned long>() : 1;
 }
 
-static void parse_starttime(const YAML::Node &config_node, process_config_t &process_config) {
+static void parse_starttime(const YAML::Node &config_node,
+                            process_config_t &process_config) {
   process_config.starttime = config_node["starttime"]
-                   ? config_node["starttime"].as<unsigned long>()
-                   : 0;
+                                 ? config_node["starttime"].as<unsigned long>()
+                                 : 0;
 }
 
-static void parse_startretries(const YAML::Node &config_node, process_config_t &process_config) {
-  process_config.startretries = config_node["startretries"]
-                      ? config_node["startretries"].as<unsigned long>()
-                      : 0;
+static void parse_startretries(const YAML::Node &config_node,
+                               process_config_t &process_config) {
+  process_config.startretries =
+      config_node["startretries"]
+          ? config_node["startretries"].as<unsigned long>()
+          : 0;
 }
 
-static void parse_stoptime(const YAML::Node &config_node, process_config_t &process_config) {
+static void parse_stoptime(const YAML::Node &config_node,
+                           process_config_t &process_config) {
   process_config.stoptime =
       config_node["stoptime"] ? config_node["stoptime"].as<unsigned long>() : 0;
 }
 
-static void parse_umask(const YAML::Node &config_node, process_config_t &process_config) {
-  process_config.umask = config_node["umask"] ? config_node["umask"].as<unsigned long>() : 0;
+static void parse_umask(const YAML::Node &config_node,
+                        process_config_t &process_config) {
+  process_config.umask =
+      config_node["umask"] ? config_node["umask"].as<unsigned long>() : 0;
 }
 
-static void parse_autostart(const YAML::Node &config_node, process_config_t &process_config) {
+static void parse_autostart(const YAML::Node &config_node,
+                            process_config_t &process_config) {
   process_config.autostart =
       config_node["autostart"] ? config_node["autostart"].as<bool>() : true;
 }
 
-static void parse_autorestart(const YAML::Node &config_node, process_config_t &process_config) {
+static void parse_autorestart(const YAML::Node &config_node,
+                              process_config_t &process_config) {
   if (!config_node["autorestart"]) {
     process_config.autorestart = AutoRestart::False;
     return;
@@ -225,21 +259,24 @@ static void parse_autorestart(const YAML::Node &config_node, process_config_t &p
   }
 }
 
-static void parse_env(const YAML::Node &config_node, process_config_t &process_config) {
+static void parse_env(const YAML::Node &config_node,
+                      process_config_t &process_config) {
   if (!config_node["env"]) {
     return;
   }
   try {
     for (const auto &entry : config_node["env"]) {
       process_config.env.emplace_back(entry.first.as<std::string>(),
-          entry.second.as<std::string>());
+                                      entry.second.as<std::string>());
     }
   } catch (std::exception &e) {
-    throw std::runtime_error(std::string("ProgramConfig: Invalid env value: ") + e.what());
+    throw std::runtime_error(std::string("ProgramConfig: Invalid env value: ") +
+                             e.what());
   }
 }
 
-static void parse_exitcodes(const YAML::Node &config_node, process_config_t &process_config) {
+static void parse_exitcodes(const YAML::Node &config_node,
+                            process_config_t &process_config) {
   if (!config_node["exitcodes"]) {
     return;
   }

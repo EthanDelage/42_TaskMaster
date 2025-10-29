@@ -31,7 +31,7 @@ typedef struct process_config_s {
   AutoRestart autorestart;
   std::vector<std::pair<std::string, std::string>> env;
   std::vector<uint8_t> exitcodes;
-}process_config_t;
+} process_config_t;
 
 class ConfigParser {
 public:
@@ -40,7 +40,6 @@ public:
 
 private:
   std::string _config_path;
-
 };
 
 #endif // CONFIG_HPP

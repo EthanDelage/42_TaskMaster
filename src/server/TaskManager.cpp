@@ -1,7 +1,7 @@
 #include "server/TaskManager.hpp"
 
-#include "server/Process.hpp"
 #include "server/ConfigParser.hpp"
+#include "server/Process.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <thread>
@@ -71,7 +71,8 @@ static void fsm_run_task(Process &process, const process_config_t &config) {
   }
 }
 
-static void fsm_transit_state(Process &process, const process_config_t &config) {
+static void fsm_transit_state(Process &process,
+                              const process_config_t &config) {
   Process::status_t status;
   Process::State next_state;
   switch (process.get_state()) {
@@ -140,7 +141,7 @@ static void fsm_transit_state(Process &process, const process_config_t &config) 
         (process.get_previous_state() == Process::State::Starting &&
          process.get_num_retries() <=
              config.startretries)) { // Process was unsuccessfully started
-                                           // and num_retries <= startretries
+                                     // and num_retries <= startretries
       std::cout << "[TaskManager] " << config.name << ":"
                 << " (Stopped)>(Starting)" << std::endl;
       next_state = Process::State::Starting;
@@ -157,7 +158,8 @@ static void fsm_waiting_task(Process &process, const process_config_t &config) {
   }
 }
 
-static void fsm_starting_task(Process &process, const process_config_t &config) {
+static void fsm_starting_task(Process &process,
+                              const process_config_t &config) {
   if (process.get_state() != process.get_previous_state()) {
     if (process.get_pending_command() == Process::Command::Start ||
         process.get_pending_command() == Process::Command::Restart) {
@@ -168,8 +170,7 @@ static void fsm_starting_task(Process &process, const process_config_t &config) 
     }
     process.start();
   }
-  if (config.starttime !=
-      0) { // Wait the process only if starttime is set
+  if (config.starttime != 0) { // Wait the process only if starttime is set
     process.update_status();
   }
   if (!process.get_status().running) {

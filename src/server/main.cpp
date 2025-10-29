@@ -1,5 +1,5 @@
-#include "server/Taskmaster.hpp"
 #include "server/ConfigParser.hpp"
+#include "server/Taskmaster.hpp"
 #include <csignal>
 #include <cstdlib>
 #include <exception>
