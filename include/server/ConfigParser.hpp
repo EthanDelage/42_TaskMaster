@@ -17,6 +17,7 @@ struct WordexpDestructor {
 typedef struct process_config_s {
   std::string name;
   std::unique_ptr<wordexp_t, WordexpDestructor> cmd;
+  std::string cmd_path;
   std::string workingdir;
   std::string stdout;
   std::string stderr;

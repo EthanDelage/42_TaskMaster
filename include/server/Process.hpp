@@ -61,7 +61,6 @@ public:
   void set_pending_command(Command);
 
 private:
-  static std::string get_cmd_path(const std::string &cmd);
   void setup_env() const;
   void setup_workingdir() const;
   void setup_outputs();
@@ -80,7 +79,6 @@ private:
   int _stdout_fd;
   int _stderr_fd;
   std::vector<int> _attached_client;
-  std::string _cmd_path;
 };
 
 std::ostream &operator<<(std::ostream &os, const Process::State &state);
