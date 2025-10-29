@@ -6,8 +6,10 @@
 #include <thread>
 #include <iostream>
 
+static void fsm_run_task(Process &process, const ProgramConfig &config);
+static void fsm_transit_state(Process &process, const ProgramConfig &config);
 static void fsm_waiting_task(Process &process, const ProgramConfig &config);
-static void fsm_starting_task(Process &process);
+static void fsm_starting_task(Process &process, const ProgramConfig &config);
 static void fsm_running_task(Process &process);
 static void fsm_exiting_task(Process &process);
 static void fsm_stopped_task(Process &process);
@@ -43,50 +45,73 @@ void TaskManager::work() {
 
 void TaskManager::fsm(Process &process) {
   const ProgramConfig& config = process.get_program_config();
-  Process::status_t status;
-  Process::State next_state;
-  // std::cout << "prev state: " << process.get_previous_state() << std::endl;
-  // std::cout << "curr state: " << process.get_state() << std::endl;
+  fsm_run_task(process, config);
+  fsm_transit_state(process, config);
+}
+
+static void fsm_run_task(Process &process, const ProgramConfig &config) {
   switch (process.get_state()) {
     case Process::State::Waiting:
       fsm_waiting_task(process, config);
+      break;
+    case Process::State::Starting:
+      fsm_starting_task(process, config);
+      break;
+    case Process::State::Running:
+      fsm_running_task(process);
+      break;
+    case Process::State::Exiting:
+      fsm_exiting_task(process);
+      break;
+    case Process::State::Stopped:
+      fsm_stopped_task(process);
+      break;
+  }
+}
+
+static void fsm_transit_state(Process &process, const ProgramConfig &config) {
+  Process::status_t status;
+  Process::State next_state;
+  switch (process.get_state()) {
+    case Process::State::Waiting:
       if (!config.get_autostart()) {
-        std::cout << "[TaskManager] " << config.get_name() << ":" << process.get_pid() << " (Waiting)>(Stopped)" << std::endl;
+        std::cout << "[TaskManager] " << config.get_name() << ":" << " (Waiting)>(Stopped)" << std::endl;
         next_state = Process::State::Stopped;
       } else {
-        std::cout << "[TaskManager] " << config.get_name() << ":" << process.get_pid() << " (Waiting)>(Starting)" << std::endl;
+        std::cout << "[TaskManager] " << config.get_name() << ":" << " (Waiting)>(Starting)" << std::endl;
         next_state = Process::State::Starting;
       }
       break;
     case Process::State::Starting:
-      fsm_starting_task(process);
       next_state = Process::State::Starting;
       status = process.get_status();
-      if (!status.running) {
-        std::cout << "[TaskManager] " << config.get_name() << ":" << process.get_pid() << " (Starting)>(Stopped)" << std::endl;
+      if (config.get_starttime() == 0) {
+        std::cout << "[TaskManager] " << config.get_name() << ":" << " (Starting)>(Running)" << std::endl;
+        next_state = Process::State::Running;
+      }
+      else if (!status.running) {
+        std::cout << "[TaskManager] " << config.get_name() << ":" << " (Starting)>(Stopped)" << std::endl;
         next_state = Process::State::Stopped;
-      } else if (config.get_starttime() == 0 || process.get_runtime() >= config.get_starttime()) {
-        std::cout << "[TaskManager] " << config.get_name() << ":" << process.get_pid() << " (Starting)>(Running)" << std::endl;
+      } else if (process.get_runtime() >= config.get_starttime()) {
+        std::cout << "[TaskManager] " << config.get_name() << ":" << " (Starting)>(Running)" << std::endl;
         next_state = Process::State::Running;
       } else if (process.get_pending_command() == Process::Command::Restart || process.get_pending_command() == Process::Command::Stop) {
-        std::cout << "[TaskManager] " << config.get_name() << ":" << process.get_pid() << " (Starting)>(Exiting)" << std::endl;
+        std::cout << "[TaskManager] " << config.get_name() << ":" << " (Starting)>(Exiting)" << std::endl;
         next_state = Process::State::Exiting;
       }
       break;
     case Process::State::Running:
-      fsm_running_task(process);
       next_state = Process::State::Running;
       status = process.get_status();
       if (!status.running) {
-        std::cout << "[TaskManager] " << config.get_name() << ":" << process.get_pid() << " (Running)>(Stopped)" << std::endl;
+        std::cout << "[TaskManager] " << config.get_name() << ":" << " (Running)>(Stopped)" << std::endl;
         next_state = Process::State::Stopped;
       } else if (process.get_pending_command() == Process::Command::Restart || process.get_pending_command() == Process::Command::Stop) {
-        std::cout << "[TaskManager] " << config.get_name() << ":" << process.get_pid() << " (Running)>(Exiting)" << std::endl;
+        std::cout << "[TaskManager] " << config.get_name() << ":" << " (Running)>(Exiting)" << std::endl;
         next_state = Process::State::Exiting;
       }
       break;
     case Process::State::Exiting:
-      fsm_exiting_task(process);
       next_state = Process::State::Exiting;
       status = process.get_status();
       if (!status.running) {
@@ -96,14 +121,14 @@ void TaskManager::fsm(Process &process) {
       }
       break;
     case Process::State::Stopped:
-      fsm_stopped_task(process);
       next_state = Process::State::Stopped;
       status = process.get_status();
       if (status.running) {
-        break;
+        break; // TODO: Make sure a process is not running when entering Stopped state
       } else if ((process.get_pending_command() == Process::Command::Start || process.get_pending_command() == Process::Command::Restart) ||
-          (process.check_autorestart() && process.get_num_retries() <= config.get_startretries())) {
-        std::cout << "[TaskManager] " << config.get_name() << ":" << process.get_pid() << " (Stopped)>(Starting)" << std::endl;
+          (process.get_previous_state() == Process::State::Running && process.check_autorestart()) || // Process was successfully started and needs autorestart
+          (process.get_previous_state() == Process::State::Starting && process.get_num_retries() <= config.get_startretries())) { // Process was unsuccessfully started and num_retries <= startretries
+        std::cout << "[TaskManager] " << config.get_name() << ":" << " (Stopped)>(Starting)" << std::endl;
         next_state = Process::State::Starting;
       }
       break;
@@ -118,7 +143,7 @@ static void fsm_waiting_task(Process &process, const ProgramConfig &config) {
   }
 }
 
-static void fsm_starting_task(Process &process) {
+static void fsm_starting_task(Process &process, const ProgramConfig &config) {
   if (process.get_state() != process.get_previous_state()) {
     if (process.get_pending_command() == Process::Command::Start ||
         process.get_pending_command() == Process::Command::Restart) {
@@ -128,23 +153,16 @@ static void fsm_starting_task(Process &process) {
     }
     process.start();
   }
-  process.update_status();
+  if (config.get_starttime() != 0) { // Wait the process only if starttime is set
+    process.update_status();
+  }
   if (!process.get_status().running) {
     // The process haven't run enough time to be considered successfully started
     process.set_num_retries(process.get_num_retries() + 1);
-    std::cout << "[TaskManager] " << process.get_program_config().get_name() << " num_retries" << process.get_num_retries() << std::endl;
   }
 }
 
 static void fsm_running_task(Process &process) {
-  if (process.get_state() != process.get_previous_state()) {
-    if (process.get_pending_command() == Process::Command::Start ||
-        process.get_pending_command() == Process::Command::Restart) {
-      // If a Start/Restart command was issued, clear the command
-      process.set_pending_command(Process::Command::None);
-    }
-    process.start();
-  }
   process.update_status();
 }
 
