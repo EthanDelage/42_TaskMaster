@@ -1,5 +1,7 @@
 #include "server/ConfigParser.hpp"
 
+#include "common/utils.hpp"
+
 #include <yaml-cpp/yaml.h>
 #include <filesystem>
 #include <csignal>
@@ -9,6 +11,7 @@
 
 static process_config_t parse_process_config(std::string &&name, const YAML::Node &config_node);
 static void parse_cmd(const YAML::Node &config_node, process_config_t &process_config);
+static void parse_cmd_path(process_config_t &process_config);
 static void parse_workingdir(const YAML::Node &config_node, process_config_t &process_config);
 static void parse_stdout(const YAML::Node &config_node, process_config_t &process_config);
 static void parse_stderr(const YAML::Node &config_node, process_config_t &process_config);
@@ -58,15 +61,13 @@ std::vector<process_config_s> ConfigParser::parse() const {
   return process_configs;
 }
 
-#include <iostream>
-
 static process_config_t parse_process_config(std::string &&name, const YAML::Node &config_node) {
   process_config_t process_config;
 
-  std::cout << "Now parsing " << name << std::endl;
   process_config.name = name;
   process_config.cmd = std::unique_ptr<wordexp_t, WordexpDestructor>(new wordexp_t);
   parse_cmd(config_node, process_config);
+  parse_cmd_path(process_config);
   parse_workingdir(config_node, process_config);
   parse_stdout(config_node, process_config);
   parse_stderr(config_node, process_config);
@@ -88,6 +89,31 @@ static void parse_cmd(const YAML::Node &config_node, process_config_t &process_c
     throw std::runtime_error("ProgramConfig: Missing required 'cmd' field");
   }
   wordexp(config_node["cmd"].as<std::string>().c_str(), process_config.cmd.get(), 0);
+static void parse_cmd_path(process_config_t &process_config) {
+  if (process_config.cmd->we_wordc < 1) {
+    process_config.cmd_path = "";
+    return;
+  }
+  std::string cmd(process_config.cmd->we_wordv[0]);
+  if (cmd.find('/') != std::string::npos) {
+    process_config.cmd_path = cmd;
+    return;
+  }
+
+  char *env_path = std::getenv("PATH");
+  if (env_path == nullptr) {
+    throw std::runtime_error("Error: please define the PATH env variable");
+  }
+  std::vector<std::string> path_list = split(env_path, ':');
+
+  for (const auto &path : path_list) {
+    std::string cmd_path = path + '/' + cmd;
+    if (access(cmd_path.c_str(), X_OK) == 0) {
+      process_config.cmd_path = cmd;
+      return;
+    }
+  }
+  throw std::runtime_error("Error: command not found: " + cmd);
 }
 
 static void parse_workingdir(const YAML::Node &config_node, process_config_t &process_config) {
