@@ -134,7 +134,7 @@ static void parse_cmd_path(process_config_t &process_config) {
   for (const auto &path : path_list) {
     std::string cmd_path = path + '/' + cmd;
     if (access(cmd_path.c_str(), X_OK) == 0) {
-      process_config.cmd_path = cmd;
+      process_config.cmd_path = cmd_path;
       return;
     }
   }

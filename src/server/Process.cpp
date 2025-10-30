@@ -72,12 +72,8 @@ int Process::start() {
   setup_env();
   setup_outputs();
   setup_workingdir();
-  if (execve(_process_config->cmd_path.c_str(), _process_config->cmd->we_wordv,
-             environ) == -1) {
-    perror("execve");
-    return -1;
-  }
-  return 0;
+  execve(_process_config->cmd_path.c_str(), _process_config->cmd->we_wordv, environ);
+  std::exit(errno);
 }
 
 int Process::stop(const int sig) {
