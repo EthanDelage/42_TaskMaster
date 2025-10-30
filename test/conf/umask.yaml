@@ -1,0 +1,9 @@
+process:
+  no_umask:
+    cmd: "mkdir -p /tmp/umask/no_umask"
+  umask_022:
+    cmd: "mkdir -p /tmp/umask/umask_022"
+    umask: 022
+  umask_077:
+    cmd: "mkdir -p /tmp/umask/umask_077"
+    umask: 077
