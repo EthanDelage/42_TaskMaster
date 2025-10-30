@@ -189,7 +189,10 @@ static void fsm_exiting_task(Process &process, const process_config_t &config) {
 }
 
 static void fsm_stopped_task(Process &process) {
-  if (process.get_pending_command() == Process::Command::Stop) {
+  if (process.get_pending_command() == Process::Command::Restart) {
+    return;
+  }
+  if (process.get_previous_state() != Process::State::Stopped) {
     process.set_pending_command(Process::Command::None);
   }
 }
