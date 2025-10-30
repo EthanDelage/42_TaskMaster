@@ -51,3 +51,5 @@ compile_commands.json
 
 # assets
 config.yaml
+venv/
+test/bin/

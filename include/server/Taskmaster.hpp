@@ -4,9 +4,9 @@
 #include "UnixSocketServer.hpp"
 #include "server/ClientSession.hpp"
 #include "server/Process.hpp"
-#include "server/config/Config.hpp"
 
 #include <common/CommandManager.hpp>
+#include <mutex>
 #include <sys/poll.h>
 #include <unordered_map>
 
@@ -23,20 +23,21 @@ struct poll_fd_metadata_s {
 
 class Taskmaster {
 public:
-  explicit Taskmaster(const Config &config);
+  explicit Taskmaster(const ConfigParser &config);
   void loop();
 
 private:
-  Config _config;
+  ConfigParser _config;
   CommandManager _command_manager;
   std::unordered_map<std::string, std::vector<Process>> _process_pool;
+  std::mutex _process_pool_mutex;
   std::vector<pollfd> _poll_fds;
   std::vector<poll_fd_metadata_t> _poll_fds_metadata;
   std::vector<ClientSession> _client_sessions;
   ClientSession *_current_client{};
   UnixSocketServer _server_socket;
 
-  void init_process_pool(std::vector<ProgramConfig> &programs_configs);
+  void init_process_pool(std::vector<process_config_t> &programs_configs);
   void handle_poll_fds();
   void handle_client_command(const pollfd &poll_fd);
   void read_process_output(int fd);

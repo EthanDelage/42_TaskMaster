@@ -1,0 +1,6 @@
+process:
+  test1:
+    cmd: "echo test1"
+  test2:
+    cmd: "echo test2"
+    autostart: false
