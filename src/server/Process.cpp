@@ -10,6 +10,7 @@ extern "C" {
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 }
 
 static void redirect_output(int new_fd, int current_fd);
@@ -68,10 +69,7 @@ int Process::start() {
     _start_timestamp = std::chrono::steady_clock::now();
     return 0;
   }
-  // child process
-  setup_env();
-  setup_outputs();
-  setup_workingdir();
+  setup();
   execve(_process_config->cmd_path.c_str(), _process_config->cmd->we_wordv,
          environ);
   std::exit(errno);
@@ -197,6 +195,13 @@ void Process::set_pending_command(Command pending_command) {
   _pending_command = pending_command;
 }
 
+void Process::setup() {
+  setup_env();
+  setup_workingdir();
+  setup_outputs();
+  setup_umask();
+}
+
 void Process::setup_env() const {
   for (std::pair<std::string, std::string> env : _process_config->env) {
     setenv(env.first.c_str(), env.second.c_str(), 1);
@@ -210,6 +215,10 @@ void Process::setup_workingdir() const {
   if (chdir(_process_config->workingdir.c_str()) == -1) {
     throw std::runtime_error(std::string("chdir:") + strerror(errno));
   }
+}
+
+void Process::setup_umask() const {
+  umask(_process_config->umask);
 }
 
 void Process::setup_outputs() {
