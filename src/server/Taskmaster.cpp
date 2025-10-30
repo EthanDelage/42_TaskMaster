@@ -71,7 +71,6 @@ void Taskmaster::init_process_pool(
       add_poll_fd({processes[i].get_stderr_pipe()[PIPE_READ], POLLIN, 0},
                   {FdType::Process});
     }
-    std::cout << "Inserting " << shared_program_config->name << std::endl;
     _process_pool.insert({shared_program_config->name, std::move(processes)});
   }
 }

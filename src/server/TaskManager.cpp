@@ -36,8 +36,6 @@ void TaskManager::work() {
     std::lock_guard<std::mutex> lock(_process_pool_mutex);
     for (auto &[name, processes] : _process_pool) {
       for (auto &process : processes) {
-        // std::cout << "[TaskManager] fsm(" <<
-        // process.get_program_config().get_name() << ")" << std::endl;
         fsm(process);
       }
     }
