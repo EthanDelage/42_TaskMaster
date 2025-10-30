@@ -9,8 +9,8 @@
 extern "C" {
 #include <fcntl.h>
 #include <stdlib.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 }
 
 static void redirect_output(int new_fd, int current_fd);
@@ -217,9 +217,7 @@ void Process::setup_workingdir() const {
   }
 }
 
-void Process::setup_umask() const {
-  umask(_process_config->umask);
-}
+void Process::setup_umask() const { umask(_process_config->umask); }
 
 void Process::setup_outputs() {
   redirect_output(_stdout_pipe[PIPE_WRITE], STDOUT_FILENO);
