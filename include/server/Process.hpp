@@ -4,7 +4,6 @@
 #include "server/ConfigParser.hpp"
 #include <chrono>
 #include <memory>
-#include <string>
 
 #define PIPE_READ 0
 #define PIPE_WRITE 1
@@ -15,6 +14,7 @@ public:
     bool running;
     bool exited;
     bool signaled;
+    bool killed;
     int exitstatus;
   } status_t;
 
@@ -58,7 +58,7 @@ public:
   void set_num_retries(size_t startretries);
   void set_state(State state);
   void set_previous_state(State state);
-  void set_pending_command(Command);
+  void set_pending_command(Command command);
 
 private:
   void setup();

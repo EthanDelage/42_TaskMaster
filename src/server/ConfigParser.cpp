@@ -224,7 +224,10 @@ static void parse_startretries(const YAML::Node &config_node,
 static void parse_stoptime(const YAML::Node &config_node,
                            process_config_t &process_config) {
   process_config.stoptime =
-      config_node["stoptime"] ? config_node["stoptime"].as<unsigned long>() : 0;
+      config_node["stoptime"] ? config_node["stoptime"].as<unsigned long>() : 3;
+  if (process_config.stoptime == 0) {
+    throw std::runtime_error("ProgramConfig: Invalid stoptime value (0)");
+  }
 }
 
 static void parse_umask(const YAML::Node &config_node,
