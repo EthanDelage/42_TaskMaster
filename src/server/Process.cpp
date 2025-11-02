@@ -239,7 +239,6 @@ static void redirect_output(int pipe_fd, int output_fd) {
   if (dup2(pipe_fd, output_fd) == -1) {
     throw std::runtime_error(std::string("dup2:") + strerror(errno));
   }
-  // close(new_fd);
 }
 
 std::ostream &operator<<(std::ostream &os, const Process::State &state) {
