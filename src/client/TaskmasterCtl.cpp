@@ -1,5 +1,6 @@
 #include "client/TaskmasterCtl.hpp"
 
+#include <common/Logger.hpp>
 #include <common/utils.hpp>
 #include <iomanip>
 #include <iostream>
@@ -33,10 +34,14 @@ void TaskmasterCtl::run_command(const std::string &command_line) {
 
 void TaskmasterCtl::send_command_and_print(
     const std::vector<std::string> &args) const {
-  if (_socket.write(join(args, " ") + '\n') == -1) {
+  std::string sent_command = join(args, " ");
+
+  if (_socket.write(sent_command + '\n') == -1) {
+    Logger::get_instance().error("Failed to send command: `" + sent_command +
+                                 "`:" + strerror(errno));
     throw std::runtime_error(std::string("send") + strerror(errno));
   }
-  std::cout << "message sent" << std::endl;
+  Logger::get_instance().info("Command `" + sent_command + "` sent");
   receive_response();
 }
 
@@ -74,8 +79,12 @@ void TaskmasterCtl::receive_response() const {
 
   ret = _socket.read(buffer, sizeof(buffer));
   if (ret == -1) {
+    Logger::get_instance().error(std::string("Failed to read response: ") +
+                                 strerror(errno));
     return;
   }
+  Logger::get_instance().info("response received:\n" +
+                              std::string(buffer, ret));
   std::cout << std::string(buffer, ret) << std::endl;
 }
 
