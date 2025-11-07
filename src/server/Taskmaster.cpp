@@ -4,6 +4,7 @@
 #include "server/Process.hpp"
 #include "server/TaskManager.hpp"
 
+#include <common/Logger.hpp>
 #include <csignal>
 #include <iostream>
 #include <memory>
@@ -171,7 +172,8 @@ void Taskmaster::reload_config() {
 }
 
 void Taskmaster::disconnect_client(int fd) {
-  // TODO: add log
+  Logger::get_instance().info("Client fd= " + std::to_string(fd) +
+                              "disconnected");
   remove_client_session(fd);
   _poll_fds.remove_poll_fd(fd);
 }
