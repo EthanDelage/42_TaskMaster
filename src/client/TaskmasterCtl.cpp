@@ -142,20 +142,6 @@ size_t TaskmasterCtl::get_usage_max_len() const {
   return max_len;
 }
 
-bool TaskmasterCtl::is_valid_args(const client_command_t &command,
-                                  const std::vector<std::string> &args) {
-  if (command.args.size() + 1 != args.size()) {
-    std::cerr << "Invalid number of arguments" << std::endl
-              << "Usage: " << command.name;
-    for (const auto &arg : command.args) {
-      std::cerr << ' ' << arg;
-    }
-    std::cerr << std::endl;
-    return false;
-  }
-  return true;
-}
-
 std::unordered_map<std::string, cmd_callback_t>
 TaskmasterCtl::get_commands_callback() {
   return {
