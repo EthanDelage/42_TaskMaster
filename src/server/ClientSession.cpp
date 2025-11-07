@@ -1,5 +1,6 @@
 #include "server/ClientSession.hpp"
 
+#include <common/Logger.hpp>
 #include <stdexcept>
 #include <unistd.h>
 
@@ -15,11 +16,16 @@ std::string ClientSession::recv_command() const {
 
   ret = read(_buffer, sizeof(_buffer));
   if (ret == -1) {
+    Logger::get_instance().error("Failed to read command from client fd=" +
+                                 std::to_string(_fd) + ": " + strerror(errno));
     throw std::runtime_error("read_command()");
   }
   if (ret == 0) {
     throw std::runtime_error("client disconnected");
   }
+  Logger::get_instance().info("Read " + std::to_string(ret) +
+                              " bytes from fd=" + std::to_string(_fd) + ": `" +
+                              buffer_str + '`');
   buffer_str = std::string(_buffer, ret);
   endl_pos = buffer_str.find('\n');
   if (endl_pos != std::string::npos) {

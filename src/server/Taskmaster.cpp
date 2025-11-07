@@ -3,6 +3,7 @@
 #include "server/Process.hpp"
 #include "server/TaskManager.hpp"
 
+#include <common/Logger.hpp>
 #include <csignal>
 #include <iostream>
 #include <memory>
@@ -137,17 +138,16 @@ void Taskmaster::handle_connection() {
   if (_poll_fds[0].revents & POLLIN) {
     int client_fd = _server_socket.accept_client();
     if (client_fd == -1) {
-      // TODO: log handle_connection() failed
       return;
     }
-    // TODO: add log
     add_poll_fd({client_fd, POLLIN, 0}, {FdType::Client});
     _client_sessions.emplace_back(client_fd);
   }
 }
 
 void Taskmaster::disconnect_client(int fd) {
-  // TODO: add log
+  Logger::get_instance().info("Client fd= " + std::to_string(fd) +
+                              "disconnected");
   remove_client_session(fd);
   remove_poll_fd(fd);
 }
