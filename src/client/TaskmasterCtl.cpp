@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <sys/poll.h>
+#include <unistd.h>
 
 TaskmasterCtl::TaskmasterCtl(std::string prompt_string)
     : _command_manager(get_commands_callback()),
@@ -15,13 +17,22 @@ TaskmasterCtl::TaskmasterCtl(std::string prompt_string)
 }
 
 void TaskmasterCtl::loop() {
+  int result;
+  pollfd poll_fds[2];
   std::string input;
 
+  poll_fds[0] = {STDIN_FILENO, POLLIN, 0};
+  poll_fds[1] = {_socket.get_fd(), POLLIN, 0};
   print_header();
   while (_is_running) {
     std::cout << _prompt_string;
+    result = poll(poll_fds, 2, -1);
+    if (result == -1) {
+      // add log
+      return;
+    }
     if (!std::getline(std::cin, input)) {
-      break; // EOF or error
+      return; // EOF or error
     }
     run_command(input);
   }
