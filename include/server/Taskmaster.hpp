@@ -2,39 +2,64 @@
 #define TASKMASTER_HPP
 
 #include "UnixSocketServer.hpp"
+#include "server/ClientSession.hpp"
 #include "server/Process.hpp"
-#include "server/config/Config.hpp"
 
 #include <common/CommandManager.hpp>
+#include <mutex>
 #include <sys/poll.h>
 #include <unordered_map>
 
-#define SERVER_SOCKFD_INDEX 0
-#define BUFFER_SIZE 1024
+enum class FdType {
+  Server,
+  Client,
+  Process,
+};
+
+typedef struct poll_fd_metadata_s poll_fd_metadata_t;
+struct poll_fd_metadata_s {
+  FdType type;
+};
 
 class Taskmaster {
 public:
-  explicit Taskmaster(Config config);
-  int autostart_processes();
+  explicit Taskmaster(const ConfigParser &config);
   void loop();
 
 private:
+  ConfigParser _config;
   CommandManager _command_manager;
-  std::vector<Process> _processes;
-  UnixSocketServer _socket;
+  std::unordered_map<std::string, std::vector<Process>> _process_pool;
+  std::mutex _process_pool_mutex;
   std::vector<pollfd> _poll_fds;
-  int _cmd_requester_fd{};
-  std::unordered_map<pid_t, Process &> _running_processes;
+  std::vector<poll_fd_metadata_t> _poll_fds_metadata;
+  std::vector<ClientSession> _client_sessions;
+  ClientSession *_current_client{};
+  UnixSocketServer _server_socket;
 
-  void start_process(Process &process);
-  void reap_processes();
-  void process_termination_handler(pid_t pid, int exitcode);
-  void process_poll_fds();
+  void init_process_pool(std::vector<process_config_t> &programs_configs);
+  void handle_poll_fds();
+  void handle_client_command(const pollfd &poll_fd);
+  void read_process_output(int fd);
   void handle_connection();
-  void run_command(int cmd_requester_fd, const std::string &cmd_line);
-  static std::string read_command(int fd);
+  void disconnect_client(int fd);
+  void add_poll_fd(pollfd fd, poll_fd_metadata_t metadata);
+  void remove_poll_fd(int fd);
+  void remove_client_session(int fd);
+  static void set_sighup_handler();
+
+  // Callback
+  void status(const std::vector<std::string> &args);
+  void start(const std::vector<std::string> &args);
+  void stop(const std::vector<std::string> &args);
+  void restart(const std::vector<std::string> &args);
+  void reload(const std::vector<std::string> &args);
+  void quit(const std::vector<std::string> &args);
+  void help(const std::vector<std::string> &args);
+
+  // Getters
+  std::vector<ClientSession>::iterator get_client_session_from_fd(int fd);
   std::unordered_map<std::string, cmd_callback_t> get_commands_callback();
-  void callback(const std::vector<std::string> &args);
 };
 
 #endif // TASKMASTER_HPP

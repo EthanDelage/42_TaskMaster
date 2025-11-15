@@ -2,7 +2,8 @@ add_library(common
   STATIC
   utils/join.cpp
   utils/split.cpp
-  UnixSocket.cpp
+  socket/Socket.cpp
+  socket/UnixSocket.cpp
   CommandManager.cpp
 )
 
