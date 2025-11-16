@@ -53,3 +53,5 @@ compile_commands.json
 config.yaml
 venv/
 test/bin/
+
+*.log

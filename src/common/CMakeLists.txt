@@ -5,6 +5,7 @@ add_library(common
   socket/Socket.cpp
   socket/UnixSocket.cpp
   CommandManager.cpp
+  Logger.cpp
 )
 
 target_compile_options(common
