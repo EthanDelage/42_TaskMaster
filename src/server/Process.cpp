@@ -57,7 +57,6 @@ Process::~Process() {
 }
 
 int Process::start() {
-  std::cout << "[Taskmaster] Starting " << _process_config->name << "(" << _pid << ")" << std::endl;
   _pid = fork();
   if (_pid == -1) {
     perror("fork");
@@ -67,6 +66,7 @@ int Process::start() {
     // parent process
     _start_timestamp = std::chrono::steady_clock::now();
     _status.killed = false;
+    std::cout << "[Taskmaster] Started " << _process_config->name << "(" << _pid << ")" << std::endl;
     return 0;
   }
   setup();

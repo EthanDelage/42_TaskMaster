@@ -8,7 +8,7 @@
 
 static void fsm_run_task(Process &process, const process_config_t &config);
 static void fsm_transit_state(Process &process, const process_config_t &config);
-static void fsm_waiting_task(Process &process, const process_config_t &config);
+static void fsm_waiting_task(void);
 static void fsm_starting_task(Process &process, const process_config_t &config);
 static void fsm_running_task(Process &process);
 static void fsm_exiting_task(Process &process, const process_config_t &config);
@@ -52,7 +52,7 @@ void TaskManager::fsm(Process &process) {
 static void fsm_run_task(Process &process, const process_config_t &config) {
   switch (process.get_state()) {
   case Process::State::Waiting:
-    fsm_waiting_task(process, config);
+    fsm_waiting_task();
     break;
   case Process::State::Starting:
     fsm_starting_task(process, config);
@@ -152,10 +152,7 @@ static void fsm_transit_state(Process &process,
   process.set_state(next_state);
 }
 
-static void fsm_waiting_task(Process &process, const process_config_t &config) {
-  if (config.autostart) {
-    process.start();
-  }
+static void fsm_waiting_task(void) {
 }
 
 static void fsm_starting_task(Process &process,
