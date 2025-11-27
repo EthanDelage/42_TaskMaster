@@ -38,10 +38,13 @@ private:
   UnixSocketServer _server_socket;
   bool _running;
 
-  void init_process_pool(std::vector<process_config_t> &programs_configs);
+  void init_process_pool(std::unordered_map<std::string, process_config_t> &process_configs);
+  void insert_process(process_config_t &process_config);
+  void remove_process(std::string const & process_name);
   void handle_poll_fds();
   void handle_client_command(const pollfd &poll_fd);
   void read_process_output(int fd);
+  void reload_config();
   void handle_connection();
   void disconnect_client(int fd);
   void add_poll_fd(pollfd fd, poll_fd_metadata_t metadata);

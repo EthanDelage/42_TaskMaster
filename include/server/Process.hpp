@@ -65,7 +65,7 @@ private:
   void setup_umask() const;
   void setup_outputs();
 
-  std::shared_ptr<const process_config_s> _process_config;
+  std::shared_ptr<const process_config_t> _process_config;
   pid_t _pid;
   std::chrono::steady_clock::time_point _start_timestamp;
   std::chrono::steady_clock::time_point _stop_timestamp;

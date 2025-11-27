@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 #include <unordered_map>
 
+static bool compare_config(const process_config_t &left, const process_config_t &right);
 static void sighup_handler(int);
 
 volatile sig_atomic_t sighup_received_g = 0;
@@ -20,7 +21,7 @@ Taskmaster::Taskmaster(const ConfigParser &config)
       _command_manager(get_commands_callback()),
       _server_socket(SOCKET_PATH_NAME),
       _running(true) {
-  std::vector<process_config_s> program_configs = config.parse();
+  std::unordered_map<std::string, process_config_t> program_configs = config.parse();
 
   add_poll_fd({_server_socket.get_fd(), POLLIN, 0}, {FdType::Server});
   init_process_pool(program_configs);
@@ -44,7 +45,7 @@ void Taskmaster::loop() {
     }
     handle_poll_fds();
     if (sighup_received_g) {
-      // TODO: reload the config and add log
+      reload_config();
       for (auto &client_session : _client_sessions) {
         if (client_session.get_reload_request()) {
           // TODO: update the reload response message
@@ -58,21 +59,44 @@ void Taskmaster::loop() {
 }
 
 void Taskmaster::init_process_pool(
-    std::vector<process_config_s> &programs_configs) {
-  for (auto &program_config : programs_configs) {
-    std::vector<Process> processes;
-    std::shared_ptr<process_config_s> shared_program_config;
-    shared_program_config =
-        std::make_shared<process_config_s>(std::move(program_config));
-    for (size_t i = 0; i < shared_program_config->numprocs; ++i) {
-      processes.emplace_back(shared_program_config);
-      add_poll_fd({processes[i].get_stdout_pipe()[PIPE_READ], POLLIN, 0},
-                  {FdType::Process});
-      add_poll_fd({processes[i].get_stderr_pipe()[PIPE_READ], POLLIN, 0},
-                  {FdType::Process});
-    }
-    _process_pool.insert({shared_program_config->name, std::move(processes)});
+  std::unordered_map<std::string, process_config_t> &process_configs) {
+  for (auto &[process_name, process_config]: process_configs) {
+    insert_process(process_config);
   }
+}
+
+void Taskmaster::insert_process(process_config_t &process_config) {
+  std::vector<Process> process_group;
+  std::shared_ptr<process_config_t> shared_program_config;
+
+  shared_program_config = std::make_shared<process_config_t>(std::move(process_config));
+  for (size_t i = 0; i < shared_program_config->numprocs; ++i) {
+    process_group.emplace_back(shared_program_config);
+  }
+  _process_pool.insert({shared_program_config->name, std::move(process_group)});
+  for (auto &process : process_group) {
+    add_poll_fd({process.get_stdout_pipe()[PIPE_READ], POLLIN, 0},
+                {FdType::Process});
+    add_poll_fd({process.get_stderr_pipe()[PIPE_READ], POLLIN, 0},
+                {FdType::Process});
+  }
+}
+
+void Taskmaster::remove_process(std::string const & process_name) {
+  auto it = _process_pool.find(process_name);
+
+  for (auto &process : it->second) {
+    std::cout << "process is not running, killing it..." << std::endl;
+    if (process.get_status().running) {
+      std::cout << "process is running, killing it..." << std::endl;
+      process.stop(SIGKILL);
+      process.update_status();
+    }
+    std::cout << "removing poll fds..." << std::endl;
+    remove_poll_fd(process.get_stdout_pipe()[PIPE_READ]);
+    remove_poll_fd(process.get_stderr_pipe()[PIPE_READ]);
+  }
+  _process_pool.erase(it);
 }
 
 void Taskmaster::handle_poll_fds() {
@@ -129,6 +153,52 @@ void Taskmaster::read_process_output(int fd) {
       }
     }
   }
+}
+
+/*
+ * Iterate the new process pool, for each:
+ * If the process is already in the old pool but not in the new pool:
+ * -> Remove the process
+ * If the process is in old and new pool:
+ * -> If the process differ:
+ *   -> Recreate the process
+ *
+ */
+
+void Taskmaster::reload_config() {
+  std::cout << "Now reloading the config file..." << std::endl;
+  std::unordered_map<std::string, process_config_t> new_process_configs;
+  std::unordered_map<std::string, std::vector<Process>> new_process_pool;
+  std::cout << "Current process pool:" << std::endl;
+  for (auto & process : _process_pool) {
+    std::cout << "Process name: " << process.first << std::endl;
+  }
+
+  std::cout << "Parsing the config file..." << std::endl;
+  new_process_configs = _config.parse();
+  std::cout << "Locking mutex..." << std::endl;
+  std::lock_guard lock(_process_pool_mutex);
+  for (auto &[new_process_name, new_process_config]: new_process_configs) {
+    std::cout << "Looking at " << new_process_name << ":" << std::endl;
+    auto old_process_group = _process_pool.find(new_process_name);
+    if (old_process_group == _process_pool.end()) {
+      // new process is not found in the pool
+      std::cout << "new process is not found in the pool" << std::endl;
+      // pool_insert_new_process(new_process_pool, new_process_config);
+    } else {
+      // new process is already in the pool
+      std::cout << "Process is in the pool AND in the new config" << std::endl;
+      if (compare_config(old_process_group->second[0].get_process_config(), new_process_config)) {
+        std::cout << "Processes differ" << std::endl;
+        // old and new processes differ
+        std::cout << "removing old process..." << std::endl;
+        remove_process(old_process_group->first);
+        std::cout << "removing old process..." << std::endl;
+        // pool_insert_new_process(new_process_pool, new_process_config);
+      }
+    }
+  }
+  // Now the current pool is filled with stale processes, remove them
 }
 
 void Taskmaster::handle_connection() {
@@ -268,6 +338,20 @@ Taskmaster::get_commands_callback() {
       {CMD_HELP_STR,
        [this](const std::vector<std::string> &args) { help(args); }},
   };
+}
+
+static bool compare_config(const process_config_t &left, const process_config_t &right) {
+  if (memcmp(left.cmd.get(), right.cmd.get(), sizeof(wordexp_t)) != 0) {
+    return false;
+  }
+  return left.name == right.name && left.cmd_path == right.cmd_path &&
+         left.workingdir == right.workingdir && left.stdout == right.stdout &&
+         left.stderr == right.stderr && left.stopsignal == right.stopsignal &&
+         left.numprocs == right.numprocs && left.starttime == right.starttime &&
+         left.stoptime == right.stoptime && left.umask == right.umask &&
+         left.autostart == right.autostart &&
+         left.autorestart == right.autorestart && left.env == right.env &&
+         left.exitcodes == right.exitcodes;
 }
 
 static void sighup_handler(int) { sighup_received_g = 1; }

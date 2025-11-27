@@ -33,7 +33,7 @@ TaskManager::~TaskManager() {
 
 void TaskManager::work() {
   while (!_stop_token) {
-    std::lock_guard<std::mutex> lock(_process_pool_mutex);
+    std::lock_guard lock(_process_pool_mutex);
     for (auto &[name, processes] : _process_pool) {
       for (auto &process : processes) {
         fsm(process);
