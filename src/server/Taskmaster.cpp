@@ -213,14 +213,15 @@ void Taskmaster::help(const std::vector<std::string> &) {
   // No server-side implementation
 }
 
-void Taskmaster::request_command(const std::vector<std::string> &args, Process::Command command) {
+void Taskmaster::request_command(const std::vector<std::string> &args,
+                                 Process::Command command) {
   for (std::string process_name : args) {
     auto process_pool_item = _process_pool.find(process_name);
     if (process_pool_item == _process_pool.end()) {
       // TODO the process was not found
       continue;
     }
-    for (Process& process : process_pool_item->second) {
+    for (Process &process : process_pool_item->second) {
       process.set_pending_command(command);
     }
   }

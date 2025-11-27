@@ -152,8 +152,7 @@ static void fsm_transit_state(Process &process,
   process.set_state(next_state);
 }
 
-static void fsm_waiting_task(void) {
-}
+static void fsm_waiting_task(void) {}
 
 static void fsm_starting_task(Process &process,
                               const process_config_t &config) {
@@ -183,9 +182,8 @@ static void fsm_exiting_task(Process &process, const process_config_t &config) {
   if (process.get_state() != process.get_previous_state()) {
     process.stop(config.stopsignal);
     return;
-  }
-  else if (process.get_stoptime() >= config.stoptime &&
-      process.get_status().running) {
+  } else if (process.get_stoptime() >= config.stoptime &&
+             process.get_status().running) {
     if (!process.get_status().killed) {
       process.kill();
     }
@@ -201,4 +199,3 @@ static void fsm_stopped_task(Process &process) {
     process.set_pending_command(Process::Command::None);
   }
 }
-
