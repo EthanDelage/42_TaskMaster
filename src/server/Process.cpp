@@ -13,7 +13,7 @@ extern "C" {
 #include <sys/wait.h>
 }
 
-static void redirect_output(int new_fd, int current_fd);
+static void redirect_output(int pipe_fd, int output_fd);
 
 extern char **environ; // envp
 
@@ -108,8 +108,6 @@ int Process::update_status(void) {
     return 0;
   }
   _status.running = false;
-  _status.exited = WIFEXITED(status);
-  _status.signaled = WIFSIGNALED(status);
   _status.exitstatus = WEXITSTATUS(status);
   return 0;
 }
@@ -122,9 +120,6 @@ bool Process::check_autorestart(void) {
   if (autorestart == AutoRestart::True) {
     return true;
   } else if (autorestart == AutoRestart::Unexpected) {
-    if (_status.signaled) {
-      return false;
-    }
     for (const auto it : _process_config->exitcodes) {
       if (it == static_cast<int>(_status.exitstatus)) {
         // If the status is found in the list of expected status
@@ -224,11 +219,10 @@ void Process::setup_outputs() {
   redirect_output(_stderr_pipe[PIPE_WRITE], STDERR_FILENO);
 }
 
-static void redirect_output(int new_fd, int current_fd) {
-  if (dup2(new_fd, current_fd) == -1) {
+static void redirect_output(int pipe_fd, int output_fd) {
+  if (dup2(pipe_fd, output_fd) == -1) {
     throw std::runtime_error(std::string("dup2:") + strerror(errno));
   }
-  // close(new_fd);
 }
 
 std::ostream &operator<<(std::ostream &os, const Process::State &state) {

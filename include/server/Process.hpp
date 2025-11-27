@@ -13,8 +13,6 @@ class Process {
 public:
   typedef struct {
     bool running;
-    bool exited;
-    bool signaled;
     int exitstatus;
   } status_t;
 
@@ -41,8 +39,6 @@ public:
   int kill();
   int update_status(void);
   bool check_autorestart(void);
-  unsigned long get_runtime(void);
-  unsigned long get_stoptime(void);
 
   const process_config_t &get_process_config();
   pid_t get_pid() const;
@@ -54,6 +50,8 @@ public:
   Command get_pending_command() const;
   const int *get_stdout_pipe() const;
   const int *get_stderr_pipe() const;
+  unsigned long get_runtime(void);
+  unsigned long get_stoptime(void);
 
   void set_num_retries(size_t startretries);
   void set_state(State state);
