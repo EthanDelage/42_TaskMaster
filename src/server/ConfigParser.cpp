@@ -230,7 +230,7 @@ static void parse_stoptime(const YAML::Node &config_node,
 static void parse_umask(const YAML::Node &config_node,
                         process_config_t &process_config) {
   process_config.umask =
-      config_node["umask"] ? config_node["umask"].as<unsigned long>() : 0;
+      config_node["umask"] ? config_node["umask"].as<mode_t>() : 022;
 }
 
 static void parse_autostart(const YAML::Node &config_node,

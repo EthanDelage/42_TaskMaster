@@ -26,7 +26,7 @@ typedef struct process_config_s {
   unsigned long starttime;
   unsigned long startretries;
   unsigned long stoptime;
-  unsigned long umask;
+  mode_t umask;
   bool autostart;
   AutoRestart autorestart;
   std::vector<std::pair<std::string, std::string>> env;

@@ -59,8 +59,10 @@ public:
   void set_pending_command(Command);
 
 private:
+  void setup();
   void setup_env() const;
   void setup_workingdir() const;
+  void setup_umask() const;
   void setup_outputs();
 
   std::shared_ptr<const process_config_s> _process_config;
