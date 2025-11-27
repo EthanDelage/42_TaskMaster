@@ -186,7 +186,17 @@ void Taskmaster::set_sighup_handler() {
   }
 }
 
-void Taskmaster::status(const std::vector<std::string> &) {}
+void Taskmaster::status(const std::vector<std::string> &) {
+  std::ostringstream oss;
+
+  for (auto const &[process_name, processes] : _process_pool) {
+    for (size_t i = 0; i < processes.size(); i++) {
+      oss << processes[i] << '[' << i << "] state: " << processes[i].get_state()
+          << std::endl;
+    }
+  }
+  _current_client->send_response(oss.str());
+}
 
 void Taskmaster::start(const std::vector<std::string> &args) {
 

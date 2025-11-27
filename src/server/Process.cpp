@@ -161,7 +161,7 @@ unsigned long Process::get_stoptime(void) {
 
 pid_t Process::get_pid() const { return _pid; }
 
-const process_config_t &Process::get_process_config() {
+const process_config_t &Process::get_process_config() const {
   return *_process_config;
 }
 
@@ -230,6 +230,11 @@ static void redirect_output(int pipe_fd, int output_fd) {
   if (dup2(pipe_fd, output_fd) == -1) {
     throw std::runtime_error(std::string("dup2:") + strerror(errno));
   }
+}
+
+std::ostream &operator<<(std::ostream &os, const Process &process) {
+  os << process.get_process_config().name << "(" << process.get_pid() << ")";
+  return os;
 }
 
 std::ostream &operator<<(std::ostream &os, const Process::State &state) {
