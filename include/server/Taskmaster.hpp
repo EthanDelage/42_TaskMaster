@@ -36,6 +36,7 @@ private:
   std::vector<ClientSession> _client_sessions;
   ClientSession *_current_client{};
   UnixSocketServer _server_socket;
+  bool _running;
 
   void init_process_pool(std::vector<process_config_t> &programs_configs);
   void handle_poll_fds();
