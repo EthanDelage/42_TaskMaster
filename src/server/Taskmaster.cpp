@@ -189,11 +189,18 @@ void Taskmaster::set_sighup_handler() {
 
 void Taskmaster::status(const std::vector<std::string> &) {}
 
-void Taskmaster::start(const std::vector<std::string> &args) { (void)args; }
+void Taskmaster::start(const std::vector<std::string> &args) {
 
-void Taskmaster::stop(const std::vector<std::string> &args) { (void)args; }
+  request_command(args, Process::Command::Start);
+}
 
-void Taskmaster::restart(const std::vector<std::string> &args) { (void)args; }
+void Taskmaster::stop(const std::vector<std::string> &args) {
+  request_command(args, Process::Command::Stop);
+}
+
+void Taskmaster::restart(const std::vector<std::string> &args) {
+  request_command(args, Process::Command::Restart);
+}
 
 void Taskmaster::reload(const std::vector<std::string> &) {
   sighup_received_g = 1;
@@ -204,6 +211,22 @@ void Taskmaster::quit(const std::vector<std::string> &) {}
 
 void Taskmaster::help(const std::vector<std::string> &) {
   // No server-side implementation
+}
+
+void Taskmaster::request_command(const std::vector<std::string> &args,
+                                 Process::Command command) {
+  for (std::string process_name : args) {
+    std::lock_guard lock(_process_pool_mutex);
+    auto process_pool_item = _process_pool.find(process_name);
+    if (process_pool_item == _process_pool.end()) {
+      // TODO the process was not found
+      continue;
+    }
+    for (Process &process : process_pool_item->second) {
+      process.set_pending_command(command);
+    }
+  }
+  _current_client->send_response("Command issued successfully\n");
 }
 
 std::vector<ClientSession>::iterator

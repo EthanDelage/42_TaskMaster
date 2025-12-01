@@ -45,6 +45,8 @@ private:
   void disconnect_client(int fd);
   void add_poll_fd(pollfd fd, poll_fd_metadata_t metadata);
   void remove_poll_fd(int fd);
+  void request_command(const std::vector<std::string> &args,
+                       Process::Command command);
   void remove_client_session(int fd);
   static void set_sighup_handler();
 
