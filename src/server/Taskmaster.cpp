@@ -19,18 +19,38 @@ volatile sig_atomic_t sighup_received_g = 0;
 Taskmaster::Taskmaster(const ConfigParser &config)
     : _config(config),
       _command_manager(get_commands_callback()),
+      _process_pool(config.parse()),
       _server_socket(SOCKET_PATH_NAME),
-      _running(true) {
-  std::unordered_map<std::string, process_config_t> program_configs = config.parse();
-
+      _running(true)
+{
   add_poll_fd({_server_socket.get_fd(), POLLIN, 0}, {FdType::Server});
-  init_process_pool(program_configs);
 }
+
+void Taskmaster::register_pool(ProcessPool process_pool) {
+  for (auto& [_, process_group] : process_pool) {
+    for (Process & process : process_group) {
+    add_poll_fd({process.get_stdout_pipe()[PIPE_READ], POLLIN, 0},
+                {FdType::Process});
+    add_poll_fd({process.get_stderr_pipe()[PIPE_READ], POLLIN, 0},
+                {FdType::Process});
+    }
+  }
+}
+
+void Taskmaster::unregister_pool(ProcessPool process_pool) {
+  for (auto& [_, process_group] : process_pool) {
+    for (Process & process : process_group) {
+      remove_poll_fd(process.get_stdout_pipe()[PIPE_READ]);
+      remove_poll_fd(process.get_stderr_pipe()[PIPE_READ]);
+    }
+  }
+}
+
 
 void Taskmaster::loop() {
   int result;
 
-  TaskManager task_manager(_process_pool, _process_pool_mutex);
+  TaskManager task_manager(_process_pool);
   set_sighup_handler();
   if (_server_socket.listen(BACKLOG) == -1) {
     return;
@@ -56,47 +76,6 @@ void Taskmaster::loop() {
       sighup_received_g = 0;
     }
   }
-}
-
-void Taskmaster::init_process_pool(
-  std::unordered_map<std::string, process_config_t> &process_configs) {
-  for (auto &[process_name, process_config]: process_configs) {
-    insert_process(process_config);
-  }
-}
-
-void Taskmaster::insert_process(process_config_t &process_config) {
-  std::vector<Process> process_group;
-  std::shared_ptr<process_config_t> shared_program_config;
-
-  shared_program_config = std::make_shared<process_config_t>(std::move(process_config));
-  for (size_t i = 0; i < shared_program_config->numprocs; ++i) {
-    process_group.emplace_back(shared_program_config);
-  }
-  _process_pool.insert({shared_program_config->name, std::move(process_group)});
-  for (auto &process : process_group) {
-    add_poll_fd({process.get_stdout_pipe()[PIPE_READ], POLLIN, 0},
-                {FdType::Process});
-    add_poll_fd({process.get_stderr_pipe()[PIPE_READ], POLLIN, 0},
-                {FdType::Process});
-  }
-}
-
-void Taskmaster::remove_process(std::string const & process_name) {
-  auto it = _process_pool.find(process_name);
-
-  for (auto &process : it->second) {
-    std::cout << "process is not running, killing it..." << std::endl;
-    if (process.get_status().running) {
-      std::cout << "process is running, killing it..." << std::endl;
-      process.stop(SIGKILL);
-      process.update_status();
-    }
-    std::cout << "removing poll fds..." << std::endl;
-    remove_poll_fd(process.get_stdout_pipe()[PIPE_READ]);
-    remove_poll_fd(process.get_stderr_pipe()[PIPE_READ]);
-  }
-  _process_pool.erase(it);
 }
 
 void Taskmaster::handle_poll_fds() {
@@ -139,8 +118,8 @@ void Taskmaster::handle_client_command(const pollfd &poll_fd) {
 
 void Taskmaster::read_process_output(int fd) {
   (void)fd; // TODO: remove this
-  for (auto &[name, processes] : _process_pool) {
-    for (auto &process : processes) {
+  for (auto &[process_name, process_group] : _process_pool) {
+    for (auto &process : process_group) {
       (void)process; // TODO: remove this
       if (false) {
         // TODO: change condition to (fd == process.get_stdout_pipe()[read])
@@ -155,50 +134,30 @@ void Taskmaster::read_process_output(int fd) {
   }
 }
 
-/*
- * Iterate the new process pool, for each:
- * If the process is already in the old pool but not in the new pool:
- * -> Remove the process
- * If the process is in old and new pool:
- * -> If the process differ:
- *   -> Recreate the process
- *
- */
-
 void Taskmaster::reload_config() {
-  std::cout << "Now reloading the config file..." << std::endl;
-  std::unordered_map<std::string, process_config_t> new_process_configs;
-  std::unordered_map<std::string, std::vector<Process>> new_process_pool;
-  std::cout << "Current process pool:" << std::endl;
-  for (auto & process : _process_pool) {
-    std::cout << "Process name: " << process.first << std::endl;
-  }
+  ProcessPool new_pool(_config.parse());
 
-  std::cout << "Parsing the config file..." << std::endl;
-  new_process_configs = _config.parse();
-  std::cout << "Locking mutex..." << std::endl;
-  std::lock_guard lock(_process_pool_mutex);
-  for (auto &[new_process_name, new_process_config]: new_process_configs) {
-    std::cout << "Looking at " << new_process_name << ":" << std::endl;
-    auto old_process_group = _process_pool.find(new_process_name);
-    if (old_process_group == _process_pool.end()) {
-      // new process is not found in the pool
-      std::cout << "new process is not found in the pool" << std::endl;
-      // pool_insert_new_process(new_process_pool, new_process_config);
-    } else {
-      // new process is already in the pool
-      std::cout << "Process is in the pool AND in the new config" << std::endl;
-      if (compare_config(old_process_group->second[0].get_process_config(), new_process_config)) {
-        std::cout << "Processes differ" << std::endl;
-        // old and new processes differ
-        std::cout << "removing old process..." << std::endl;
-        remove_process(old_process_group->first);
-        std::cout << "removing old process..." << std::endl;
-        // pool_insert_new_process(new_process_pool, new_process_config);
+  std::lock_guard lock(_process_pool.get_mutex());
+  std::cout << "Reloading the config..." << std::endl;
+  for (auto it = new_pool.begin(); it != new_pool.end(); ){
+    auto old_it = _process_pool.find(it->first);
+    if (old_it != _process_pool.end()) {
+      std::cout << "Reloading " << it->second << std::endl;
+      if (compare_config(old_it->second.get_process_config(), it->second.get_process_config())) {
+        std::cout << "No need to reload" << std::endl;
+        it = new_pool.erase(it);
+        new_pool.move_from(_process_pool, old_it->first);
+        continue;
       }
+      std::cout << "Will be reloaded" << std::endl;
     }
+    ++it;
   }
-  // Now the current pool is filled with stale processes, remove them
+  for (auto &it: _process_pool) {
+    std::cout << "Stopping old process: " << it.second << std::endl;
+    it.second.stop(SIGKILL);
+  }
+  _process_pool = std::move(new_pool); // I want to do this
 }
 
 void Taskmaster::handle_connection() {
@@ -341,8 +300,13 @@ Taskmaster::get_commands_callback() {
 }
 
 static bool compare_config(const process_config_t &left, const process_config_t &right) {
-  if (memcmp(left.cmd.get(), right.cmd.get(), sizeof(wordexp_t)) != 0) {
+  if (left.cmd->we_wordc != right.cmd->we_wordc) {
     return false;
+  }
+  for (size_t i = 0; i < left.cmd->we_wordc; i++) {
+    if (strcmp(left.cmd->we_wordv[i], right.cmd->we_wordv[i]) != 0) {
+      return false;
+    }
   }
   return left.name == right.name && left.cmd_path == right.cmd_path &&
          left.workingdir == right.workingdir && left.stdout == right.stdout &&

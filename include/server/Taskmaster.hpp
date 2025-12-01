@@ -4,9 +4,9 @@
 #include "UnixSocketServer.hpp"
 #include "server/ClientSession.hpp"
 #include "server/Process.hpp"
+#include "server/ProcessPool.hpp"
 
 #include <common/CommandManager.hpp>
-#include <mutex>
 #include <sys/poll.h>
 #include <unordered_map>
 
@@ -29,8 +29,7 @@ public:
 private:
   ConfigParser _config;
   CommandManager _command_manager;
-  std::unordered_map<std::string, std::vector<Process>> _process_pool;
-  std::mutex _process_pool_mutex;
+  ProcessPool _process_pool;
   std::vector<pollfd> _poll_fds;
   std::vector<poll_fd_metadata_t> _poll_fds_metadata;
   std::vector<ClientSession> _client_sessions;
@@ -39,8 +38,11 @@ private:
   bool _running;
 
   void init_process_pool(std::unordered_map<std::string, process_config_t> &process_configs);
+  void register_pool(ProcessPool process_pool);
+  void unregister_pool(ProcessPool process_pool);
   void insert_process(process_config_t &process_config);
   void remove_process(std::string const & process_name);
+  void remove_stale(ProcessPool &new_pool);
   void handle_poll_fds();
   void handle_client_command(const pollfd &poll_fd);
   void read_process_output(int fd);

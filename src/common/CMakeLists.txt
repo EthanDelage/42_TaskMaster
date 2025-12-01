@@ -5,6 +5,8 @@ add_library(common
   socket/Socket.cpp
   socket/UnixSocket.cpp
   CommandManager.cpp
+        ../../include/server/ProcessGroup.hpp
+        ../../include/server/ProcessPool.hpp
 )
 
 target_compile_options(common

@@ -2,22 +2,18 @@
 #define TASKMANAGER_HPP
 
 #include "server/Process.hpp"
+#include "server/ProcessPool.hpp"
 
-#include <mutex>
+#include <atomic>
 #include <thread>
-#include <unordered_map>
-#include <vector>
 
 class TaskManager {
 public:
-  explicit TaskManager(
-      std::unordered_map<std::string, std::vector<Process>> &process_pool,
-      std::mutex &process_pool_mutex);
+  explicit TaskManager(ProcessPool& process_pool);
   ~TaskManager();
 
 private:
-  std::unordered_map<std::string, std::vector<Process>> &_process_pool;
-  std::mutex &_process_pool_mutex;
+  ProcessPool& _process_pool;
   std::thread _worker_thread;
   std::atomic<bool> _stop_token;
 
