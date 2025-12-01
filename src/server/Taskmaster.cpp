@@ -216,6 +216,7 @@ void Taskmaster::help(const std::vector<std::string> &) {
 void Taskmaster::request_command(const std::vector<std::string> &args,
                                  Process::Command command) {
   for (std::string process_name : args) {
+    std::lock_guard lock(_process_pool_mutex);
     auto process_pool_item = _process_pool.find(process_name);
     if (process_pool_item == _process_pool.end()) {
       // TODO the process was not found
