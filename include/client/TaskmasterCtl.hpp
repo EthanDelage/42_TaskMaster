@@ -29,7 +29,8 @@ private:
   bool _is_running;
   UnixSocketClient _socket;
 
-  void send_command_and_print(const std::vector<std::string> &args) const;
+  void send_command(const std::vector<std::string> &args) const;
+  void send_and_receive(const std::vector<std::string> &args) const;
   void quit(const std::vector<std::string> &);
   void print_usage(const std::vector<std::string> &) const;
   static void print_header();

@@ -31,17 +31,21 @@ void TaskmasterCtl::run_command(const std::string &command_line) {
   _command_manager.run_command(command_line);
 }
 
-void TaskmasterCtl::send_command_and_print(
-    const std::vector<std::string> &args) const {
+void TaskmasterCtl::send_command(const std::vector<std::string> &args) const {
   if (_socket.write(join(args, " ") + '\n') == -1) {
     throw std::runtime_error(std::string("send") + strerror(errno));
   }
   std::cout << "message sent" << std::endl;
+}
+
+void TaskmasterCtl::send_and_receive(
+    const std::vector<std::string> &args) const {
+  send_command(args);
   receive_response();
 }
 
 void TaskmasterCtl::quit(const std::vector<std::string> &args) {
-  send_command_and_print(args);
+  send_and_receive(args);
   _is_running = false;
 }
 
@@ -113,23 +117,23 @@ TaskmasterCtl::get_commands_callback() {
   return {
       {CMD_STATUS_STR,
        [this](const std::vector<std::string> &args) {
-         send_command_and_print(args);
+         send_and_receive(args);
        }},
       {CMD_START_STR,
        [this](const std::vector<std::string> &args) {
-         send_command_and_print(args);
+         send_and_receive(args);
        }},
       {CMD_STOP_STR,
        [this](const std::vector<std::string> &args) {
-         send_command_and_print(args);
+         send_and_receive(args);
        }},
       {CMD_RESTART_STR,
        [this](const std::vector<std::string> &args) {
-         send_command_and_print(args);
+         send_and_receive(args);
        }},
       {CMD_RELOAD_STR,
        [this](const std::vector<std::string> &args) {
-         send_command_and_print(args);
+         send_and_receive(args);
        }},
       {CMD_QUIT_STR,
        [this](const std::vector<std::string> &args) { quit(args); }},
