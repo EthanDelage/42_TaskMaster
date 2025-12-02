@@ -48,6 +48,9 @@ void TaskmasterCtl::quit(const std::vector<std::string> &args) {
 void TaskmasterCtl::print_usage(const std::vector<std::string> &) const {
   std::cout << "Available commands:" << std::endl;
   for (const auto &[cmd_name, cmd] : _command_manager) {
+    if (cmd.callback == nullptr) {
+      continue;
+    }
     std::ostringstream left_part;
     left_part << cmd.name;
     for (const auto &arg : cmd.args) {

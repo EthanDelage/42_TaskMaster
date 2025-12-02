@@ -67,7 +67,7 @@ void CommandManager::run_command(const std::string &command_line) {
   const std::string &cmd_name = args[0];
   const auto cmd = _commands_map.find(cmd_name);
 
-  if (cmd != _commands_map.end()) {
+  if (cmd != _commands_map.end() && cmd->second.callback != nullptr) {
     if (is_valid_args(cmd->second, args)) {
       cmd->second.callback(args);
     }
