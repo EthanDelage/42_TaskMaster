@@ -40,7 +40,7 @@ public:
   int update_status(void);
   bool check_autorestart(void);
 
-  const process_config_t &get_process_config();
+  const process_config_t &get_process_config() const;
   pid_t get_pid() const;
   std::chrono::steady_clock::time_point get_start_timestamp() const;
   size_t get_num_retries() const;
@@ -80,6 +80,8 @@ private:
   int _stderr_fd;
   std::vector<int> _attached_client;
 };
+
+std::ostream &operator<<(std::ostream &os, const Process &process);
 
 std::ostream &operator<<(std::ostream &os, const Process::State &state);
 
