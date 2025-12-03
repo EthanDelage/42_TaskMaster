@@ -132,7 +132,6 @@ TaskmasterCtl::get_commands_callback() {
        [this](const std::vector<std::string> &args) { quit(args); }},
       {CMD_EXIT_STR,
        [this](const std::vector<std::string> &args) { quit(args); }},
-      {CMD_HELP_STR,
-       nullptr},
+      {CMD_HELP_STR, nullptr},
   };
 }

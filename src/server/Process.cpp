@@ -78,7 +78,8 @@ int Process::start() {
 
 int Process::stop(const int sig) {
   if (_pid == -1) {
-    throw std::runtime_error("Error: Process::stop(): trying to kill process with pid -1");
+    throw std::runtime_error(
+        "Error: Process::stop(): trying to kill process with pid -1");
   }
   if (::kill(_pid, sig) == -1) {
     perror("kill");

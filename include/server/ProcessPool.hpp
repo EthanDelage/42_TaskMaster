@@ -5,24 +5,24 @@
 
 #include <mutex>
 
-
 class ProcessPool {
   using PoolType = std::unordered_map<std::string, ProcessGroup>;
   using PoolIterator = PoolType::iterator;
   using ConstPoolIterator = PoolType::const_iterator;
+
 public:
   ProcessPool();
-  ProcessPool(std::unordered_map<std::string, process_config_t>&& config_map);
+  ProcessPool(std::unordered_map<std::string, process_config_t> &&config_map);
 
-  ProcessPool& operator=(ProcessPool&& other) noexcept;
+  ProcessPool &operator=(ProcessPool &&other) noexcept;
 
-  void emplace(process_config_t&& process_config);
+  void emplace(process_config_t &&process_config);
   PoolIterator erase(PoolIterator it);
   PoolIterator find(std::string const &key);
-  PoolType::node_type extract(std::string const & key);
-  void move_from(ProcessPool& other, std::string const &key);
+  PoolType::node_type extract(std::string const &key);
+  void move_from(ProcessPool &other, std::string const &key);
 
-  std::unordered_map<std::string, ProcessGroup>& get_pool();
+  std::unordered_map<std::string, ProcessGroup> &get_pool();
   std::mutex &get_mutex();
 
   PoolIterator begin();
@@ -39,4 +39,4 @@ private:
 
 std::ostream &operator<<(std::ostream &os, const ProcessPool &process_pool);
 
-#endif //PROCESSPOOL_HPP
+#endif // PROCESSPOOL_HPP

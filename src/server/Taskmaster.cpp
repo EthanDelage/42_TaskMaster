@@ -11,7 +11,8 @@
 #include <sys/wait.h>
 #include <unordered_map>
 
-static bool compare_config(const process_config_t &left, const process_config_t &right);
+static bool compare_config(const process_config_t &left,
+                           const process_config_t &right);
 static void sighup_handler(int);
 
 volatile sig_atomic_t sighup_received_g = 0;
@@ -27,25 +28,24 @@ Taskmaster::Taskmaster(const ConfigParser &config)
 }
 
 void Taskmaster::register_pool(ProcessPool process_pool) {
-  for (auto& [_, process_group] : process_pool) {
-    for (Process & process : process_group) {
-    add_poll_fd({process.get_stdout_pipe()[PIPE_READ], POLLIN, 0},
-                {FdType::Process});
-    add_poll_fd({process.get_stderr_pipe()[PIPE_READ], POLLIN, 0},
-                {FdType::Process});
+  for (auto &[_, process_group] : process_pool) {
+    for (Process &process : process_group) {
+      add_poll_fd({process.get_stdout_pipe()[PIPE_READ], POLLIN, 0},
+                  {FdType::Process});
+      add_poll_fd({process.get_stderr_pipe()[PIPE_READ], POLLIN, 0},
+                  {FdType::Process});
     }
   }
 }
 
 void Taskmaster::unregister_pool(ProcessPool process_pool) {
-  for (auto& [_, process_group] : process_pool) {
-    for (Process & process : process_group) {
+  for (auto &[_, process_group] : process_pool) {
+    for (Process &process : process_group) {
       remove_poll_fd(process.get_stdout_pipe()[PIPE_READ]);
       remove_poll_fd(process.get_stderr_pipe()[PIPE_READ]);
     }
   }
 }
-
 
 void Taskmaster::loop() {
   int result;
@@ -139,11 +139,12 @@ void Taskmaster::reload_config() {
 
   std::lock_guard lock(_process_pool.get_mutex());
   std::cout << "Reloading the config..." << std::endl;
-  for (auto it = new_pool.begin(); it != new_pool.end(); ){
+  for (auto it = new_pool.begin(); it != new_pool.end();) {
     auto old_it = _process_pool.find(it->first);
     if (old_it != _process_pool.end()) {
       std::cout << "Reloading " << it->second << std::endl;
-      if (compare_config(old_it->second.get_process_config(), it->second.get_process_config())) {
+      if (compare_config(old_it->second.get_process_config(),
+                         it->second.get_process_config())) {
         std::cout << "No need to reload" << std::endl;
         it = new_pool.erase(it);
         new_pool.move_from(_process_pool, old_it->first);
@@ -153,7 +154,7 @@ void Taskmaster::reload_config() {
     }
     ++it;
   }
-  for (auto &it: _process_pool) {
+  for (auto &it : _process_pool) {
     std::cout << "Stopping old process: " << it.second << std::endl;
     it.second.stop(SIGKILL);
   }
@@ -218,12 +219,7 @@ void Taskmaster::set_sighup_handler() {
 void Taskmaster::status(const std::vector<std::string> &) {
   std::ostringstream oss;
 
-  for (auto const &[process_name, processes] : _process_pool) {
-    for (size_t i = 0; i < processes.size(); i++) {
-      oss << processes[i] << '[' << i << "] state: " << processes[i].get_state()
-          << std::endl;
-    }
-  }
+  oss << _process_pool;
   _current_client->send_response(oss.str());
 }
 
@@ -257,7 +253,7 @@ void Taskmaster::help(const std::vector<std::string> &) {
 void Taskmaster::request_command(const std::vector<std::string> &args,
                                  Process::Command command) {
   for (std::string process_name : args) {
-    std::lock_guard lock(_process_pool_mutex);
+    std::lock_guard lock(_process_pool.get_mutex());
     auto process_pool_item = _process_pool.find(process_name);
     if (process_pool_item == _process_pool.end()) {
       // TODO the process was not found
@@ -299,7 +295,8 @@ Taskmaster::get_commands_callback() {
   };
 }
 
-static bool compare_config(const process_config_t &left, const process_config_t &right) {
+static bool compare_config(const process_config_t &left,
+                           const process_config_t &right) {
   if (left.cmd->we_wordc != right.cmd->we_wordc) {
     return false;
   }

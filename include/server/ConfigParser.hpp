@@ -2,8 +2,8 @@
 #define CONFIG_HPP
 
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 #include <yaml-cpp/yaml.h>
 extern "C" {
 #include <wordexp.h>

@@ -9,11 +9,11 @@
 
 class TaskManager {
 public:
-  explicit TaskManager(ProcessPool& process_pool);
+  explicit TaskManager(ProcessPool &process_pool);
   ~TaskManager();
 
 private:
-  ProcessPool& _process_pool;
+  ProcessPool &_process_pool;
   std::thread _worker_thread;
   std::atomic<bool> _stop_token;
 

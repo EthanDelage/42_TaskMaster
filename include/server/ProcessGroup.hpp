@@ -5,8 +5,8 @@
 #include <vector>
 
 class ProcessGroup {
-  public:
-  explicit ProcessGroup(process_config_t&& config);
+public:
+  explicit ProcessGroup(process_config_t &&config);
   process_config_t const &get_process_config() const;
 
   void stop(int sig);
@@ -18,6 +18,7 @@ class ProcessGroup {
   std::vector<Process>::iterator end();
   std::vector<Process>::const_iterator end() const;
   std::vector<Process>::const_iterator cend() const;
+
 private:
   std::vector<Process> _process_vector;
   std::shared_ptr<const process_config_t> _config;
@@ -26,4 +27,4 @@ private:
 std::ostream &operator<<(std::ostream &os, const Process &process);
 std::ostream &operator<<(std::ostream &os, const ProcessGroup &process_group);
 
-#endif //PROCESSGROUP_HPP
+#endif // PROCESSGROUP_HPP

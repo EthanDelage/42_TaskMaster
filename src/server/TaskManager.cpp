@@ -34,7 +34,7 @@ void TaskManager::work() {
   std::cout << "TaskManager::work()" << std::endl;
   while (!_stop_token) {
     std::lock_guard lock(_process_pool.get_mutex());
-    for (auto & [_, process_group] : _process_pool) {
+    for (auto &[_, process_group] : _process_pool) {
       for (auto &process : process_group) {
         fsm(process);
       }
