@@ -26,26 +26,6 @@ Taskmaster::Taskmaster(const ConfigParser &config)
   add_poll_fd({_server_socket.get_fd(), POLLIN, 0}, {FdType::Server});
 }
 
-void Taskmaster::register_pool(ProcessPool process_pool) {
-  for (auto &[_, process_group] : process_pool) {
-    for (Process &process : process_group) {
-      add_poll_fd({process.get_stdout_pipe()[PIPE_READ], POLLIN, 0},
-                  {FdType::Process});
-      add_poll_fd({process.get_stderr_pipe()[PIPE_READ], POLLIN, 0},
-                  {FdType::Process});
-    }
-  }
-}
-
-void Taskmaster::unregister_pool(ProcessPool process_pool) {
-  for (auto &[_, process_group] : process_pool) {
-    for (Process &process : process_group) {
-      remove_poll_fd(process.get_stdout_pipe()[PIPE_READ]);
-      remove_poll_fd(process.get_stderr_pipe()[PIPE_READ]);
-    }
-  }
-}
-
 void Taskmaster::loop() {
   int result;
 

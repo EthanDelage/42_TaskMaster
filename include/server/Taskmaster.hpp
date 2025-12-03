@@ -37,13 +37,6 @@ private:
   UnixSocketServer _server_socket;
   bool _running;
 
-  void init_process_pool(
-      std::unordered_map<std::string, process_config_t> &process_configs);
-  void register_pool(ProcessPool process_pool);
-  void unregister_pool(ProcessPool process_pool);
-  void insert_process(process_config_t &process_config);
-  void remove_process(std::string const &process_name);
-  void remove_stale(ProcessPool &new_pool);
   void handle_poll_fds();
   void handle_client_command(const pollfd &poll_fd);
   void read_process_output(int fd);
