@@ -57,6 +57,18 @@ CommandManager::CommandManager(
       "Show this help message",
       get_command_callback(CMD_HELP_STR, commands_callback),
   });
+  add_command({
+      CMD_ATTACH_STR,
+      {"<program_name>"},
+      "Attach to a running process; press Ctrl-C to detach",
+      get_command_callback(CMD_ATTACH_STR, commands_callback),
+  });
+  add_command({
+      CMD_DETACH_STR,
+      {"<program_name>"},
+      "Leave the attached process session and return to the CLI",
+      get_command_callback(CMD_DETACH_STR, commands_callback),
+  });
 }
 
 void CommandManager::run_command(const std::string &command_line) {

@@ -206,6 +206,34 @@ void Taskmaster::help(const std::vector<std::string> &) {
   // No server-side implementation
 }
 
+void Taskmaster::attach(const std::vector<std::string> &args) {
+  std::lock_guard<std::mutex> lock(_process_pool_mutex);
+  auto process_group = _process_pool.find(args[1]);
+  if (process_group == _process_pool.end()) {
+    // TODO: add log
+    // TODO: send response to the client
+    std::cout << "process group not found" << std::endl;
+    return;
+  }
+  for (auto &process : process_group->second) {
+    process.attach_client(_current_client->get_fd());
+  }
+}
+
+void Taskmaster::detach(const std::vector<std::string> &args) {
+  std::lock_guard<std::mutex> lock(_process_pool_mutex);
+  auto process_group = _process_pool.find(args[1]);
+  if (process_group == _process_pool.end()) {
+    // TODO: add log
+    // TODO: send response to the client
+    return;
+  }
+  for (auto &process : process_group->second) {
+    process.detach_client(_current_client->get_fd());
+  }
+  _current_client->send_response("Successfully detached\n");
+}
+
 std::vector<ClientSession>::iterator
 Taskmaster::get_client_session_from_fd(int fd) {
   return std::find_if(
@@ -231,6 +259,10 @@ Taskmaster::get_commands_callback() {
       {CMD_EXIT_STR,
        [this](const std::vector<std::string> &args) { quit(args); }},
       {CMD_HELP_STR, nullptr},
+      {CMD_ATTACH_STR,
+       [this](const std::vector<std::string> &args) { attach(args); }},
+      {CMD_DETACH_STR,
+       [this](const std::vector<std::string> &args) { detach(args); }},
   };
 }
 

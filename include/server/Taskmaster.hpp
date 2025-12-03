@@ -56,6 +56,8 @@ private:
   void reload(const std::vector<std::string> &args);
   void quit(const std::vector<std::string> &args);
   void help(const std::vector<std::string> &args);
+  void attach(const std::vector<std::string> &args);
+  void detach(const std::vector<std::string> &args);
 
   // Getters
   std::vector<ClientSession>::iterator get_client_session_from_fd(int fd);

@@ -40,6 +40,9 @@ public:
   int update_status(void);
   bool check_autorestart(void);
 
+  void attach_client(int fd);
+  void detach_client(int fd);
+
   const process_config_t &get_process_config();
   pid_t get_pid() const;
   std::chrono::steady_clock::time_point get_start_timestamp() const;

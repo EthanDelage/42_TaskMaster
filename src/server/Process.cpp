@@ -132,6 +132,25 @@ bool Process::check_autorestart(void) {
   return false;
 }
 
+void Process::attach_client(int fd) {
+  if (std::find(_attached_client.begin(), _attached_client.end(), fd) !=
+      _attached_client.end()) {
+    // TODO: add log
+  } else {
+    _attached_client.push_back(fd);
+  }
+}
+
+void Process::detach_client(int fd) {
+  auto client_it =
+      std::find(_attached_client.begin(), _attached_client.end(), fd);
+  if (client_it == _attached_client.end()) {
+    // TODO: add log
+  } else {
+    _attached_client.erase(client_it);
+  }
+}
+
 unsigned long Process::get_runtime(void) {
   long runtime = std::chrono::duration_cast<std::chrono::seconds>(
                      std::chrono::steady_clock::now() - _start_timestamp)
