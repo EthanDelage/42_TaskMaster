@@ -44,6 +44,7 @@ public:
   void read_stderr();
   void attach_client(int fd);
   void detach_client(int fd);
+  void close_outputs();
 
   const process_config_t &get_process_config();
   pid_t get_pid() const;

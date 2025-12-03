@@ -25,13 +25,11 @@ Process::Process(std::shared_ptr<const process_config_t> process_config)
       _num_retries(0),
       _state(State::Waiting),
       _previous_state(State::Waiting),
-      _pending_command(Command::None) {
-  if (pipe(_stdout_pipe) == -1) {
-    throw std::runtime_error("Error: Process() failed to create stdout pipe");
-  }
-  if (pipe(_stderr_pipe) == -1) {
-    throw std::runtime_error("Error: Process() failed to create stderr pipe");
-  }
+      _pending_command(Command::None),
+      _stdout_pipe{-1, -1},
+      _stderr_pipe{-1, -1},
+      _stdout_fd(-1),
+      _stderr_fd(-1) {
   std::string stdout_path = _process_config->stdout;
   _stdout_fd = stdout_path.empty() ? open("/dev/null", O_WRONLY)
                                    : open(stdout_path.c_str(),
@@ -51,9 +49,7 @@ Process::Process(std::shared_ptr<const process_config_t> process_config)
 
 Process::~Process() {
   close(_stdout_pipe[PIPE_READ]);
-  close(_stdout_pipe[PIPE_WRITE]);
   close(_stderr_pipe[PIPE_READ]);
-  close(_stderr_pipe[PIPE_WRITE]);
   close(_stdout_fd);
   close(_stderr_fd);
 }
@@ -61,6 +57,12 @@ Process::~Process() {
 int Process::start() {
   std::cout << "[Taskmaster] Starting " << _process_config->name << " ..."
             << std::endl;
+  if (pipe(_stdout_pipe) == -1) {
+    throw std::runtime_error("Error: Process() failed to create stdout pipe");
+  }
+  if (pipe(_stderr_pipe) == -1) {
+    throw std::runtime_error("Error: Process() failed to create stderr pipe");
+  }
   _pid = fork();
   if (_pid == -1) {
     perror("fork");
@@ -68,9 +70,17 @@ int Process::start() {
   }
   if (_pid > 0) {
     // parent process
+    close(_stdout_pipe[PIPE_WRITE]);
+    _stdout_pipe[PIPE_WRITE] = -1;
+    close(_stderr_pipe[PIPE_WRITE]);
+    _stderr_pipe[PIPE_WRITE] = -1;
     _start_timestamp = std::chrono::steady_clock::now();
     return 0;
   }
+  close(_stdout_pipe[PIPE_READ]);
+  close(_stderr_pipe[PIPE_READ]);
+  close(_stdout_fd);
+  close(_stderr_fd);
   setup();
   execve(_process_config->cmd_path.c_str(), _process_config->cmd->we_wordv,
          environ);
@@ -159,6 +169,13 @@ void Process::detach_client(int fd) {
   } else {
     _attached_client.erase(client_it);
   }
+}
+
+void Process::close_outputs() {
+  close(_stdout_pipe[PIPE_READ]);
+  _stdout_pipe[PIPE_READ] = -1;
+  close(_stderr_pipe[PIPE_READ]);
+  _stderr_pipe[PIPE_READ] = -1;
 }
 
 unsigned long Process::get_runtime(void) {

@@ -84,7 +84,11 @@ void Taskmaster::handle_poll_fds() {
       if (fd_metadata->type == FdType::Client) {
         handle_client_command(*poll_fd);
       } else if (fd_metadata->type == FdType::Process) {
-        read_process_output(poll_fd->fd);
+        if ((poll_fd->revents & POLLNVAL) != 0) {
+          remove_poll_fd(poll_fd->fd);
+        } else {
+          read_process_output(poll_fd->fd);
+        }
       }
     }
   }
