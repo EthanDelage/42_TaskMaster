@@ -142,23 +142,23 @@ void Taskmaster::reload_config() {
   for (auto it = new_pool.begin(); it != new_pool.end();) {
     auto old_it = _process_pool.find(it->first);
     if (old_it != _process_pool.end()) {
-      std::cout << "Reloading " << it->second << std::endl;
+      std::cout << "Checking [" << it->first << "] ... ";
       if (compare_config(old_it->second.get_process_config(),
                          it->second.get_process_config())) {
-        std::cout << "No need to reload" << std::endl;
+        std::cout << "no need to reload" << std::endl;
         it = new_pool.erase(it);
         new_pool.move_from(_process_pool, old_it->first);
         continue;
       }
-      std::cout << "Will be reloaded" << std::endl;
+      std::cout << "will be reloaded" << std::endl;
     }
     ++it;
   }
   for (auto &it : _process_pool) {
-    std::cout << "Stopping old process: " << it.second << std::endl;
+    std::cout << "Stopping old process [" << it.first << "]" << std::endl;
     it.second.stop(SIGKILL);
   }
-  _process_pool = std::move(new_pool); // I want to do this
+  _process_pool = std::move(new_pool);
 }
 
 void Taskmaster::handle_connection() {
