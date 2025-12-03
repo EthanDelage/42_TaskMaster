@@ -26,27 +26,27 @@ void ProcessGroup::start() {
   }
 }
 
-std::vector<Process>::iterator ProcessGroup::begin() {
+ProcessGroup::GroupIterator ProcessGroup::begin() {
   return _process_vector.begin();
 }
 
-std::vector<Process>::const_iterator ProcessGroup::begin() const {
+ProcessGroup::GroupConstIterator ProcessGroup::begin() const {
   return _process_vector.begin();
 }
 
-std::vector<Process>::const_iterator ProcessGroup::cbegin() const {
+ProcessGroup::GroupConstIterator ProcessGroup::cbegin() const {
   return _process_vector.cbegin();
 }
 
-std::vector<Process>::iterator ProcessGroup::end() {
+ProcessGroup::GroupIterator ProcessGroup::end() {
   return _process_vector.end();
 }
 
-std::vector<Process>::const_iterator ProcessGroup::end() const {
+ProcessGroup::GroupConstIterator ProcessGroup::end() const {
   return _process_vector.end();
 }
 
-std::vector<Process>::const_iterator ProcessGroup::cend() const {
+ProcessGroup::GroupConstIterator ProcessGroup::cend() const {
   return _process_vector.cend();
 }
 

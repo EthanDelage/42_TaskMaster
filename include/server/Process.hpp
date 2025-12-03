@@ -4,6 +4,7 @@
 #include "server/ConfigParser.hpp"
 #include <chrono>
 #include <memory>
+#include <string>
 
 #define PIPE_READ 0
 #define PIPE_WRITE 1
@@ -82,7 +83,6 @@ private:
 };
 
 std::ostream &operator<<(std::ostream &os, const Process &process);
-
 std::ostream &operator<<(std::ostream &os, const Process::State &state);
 
 #endif // PROCESS_HPP
