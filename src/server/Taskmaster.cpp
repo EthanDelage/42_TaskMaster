@@ -22,8 +22,7 @@ Taskmaster::Taskmaster(const ConfigParser &config)
       _command_manager(get_commands_callback()),
       _process_pool(config.parse()),
       _server_socket(SOCKET_PATH_NAME),
-      _running(true)
-{
+      _running(true) {
   add_poll_fd({_server_socket.get_fd(), POLLIN, 0}, {FdType::Server});
 }
 
