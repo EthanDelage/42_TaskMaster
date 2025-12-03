@@ -12,6 +12,7 @@ extern "C" {
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <unistd.h>
 }
 
 static void redirect_output(int pipe_fd, int output_fd);
