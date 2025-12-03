@@ -116,6 +116,7 @@ int Process::update_status(void) {
   }
   _status.running = false;
   _status.exitstatus = WEXITSTATUS(status);
+  _pid = -1;
   return 0;
 }
 
