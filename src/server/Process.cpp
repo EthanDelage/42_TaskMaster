@@ -78,7 +78,8 @@ int Process::start() {
 
 int Process::stop(const int sig) {
   if (_pid == -1) {
-    throw std::runtime_error("Trying to kill an unstarted process\n");
+    throw std::runtime_error(
+        "Error: Process::stop(): trying to kill process with pid -1");
   }
   if (::kill(_pid, sig) == -1) {
     perror("kill");
@@ -234,7 +235,7 @@ static void redirect_output(int pipe_fd, int output_fd) {
 }
 
 std::ostream &operator<<(std::ostream &os, const Process &process) {
-  os << process.get_process_config().name << "(" << process.get_pid() << ")";
+  os << "(" << process.get_pid() << ") - " << process.get_state();
   return os;
 }
 

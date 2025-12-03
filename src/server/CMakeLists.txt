@@ -6,6 +6,8 @@ add_executable(server
         ConfigParser.cpp
         UnixSocketServer.cpp
         ClientSession.cpp
+        ProcessGroup.cpp
+        ProcessPool.cpp
 )
 
 include(FetchContent)

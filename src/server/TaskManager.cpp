@@ -14,13 +14,12 @@ static void fsm_running_task(Process &process);
 static void fsm_exiting_task(Process &process, const process_config_t &config);
 static void fsm_stopped_task(Process &process);
 
-TaskManager::TaskManager(
-    std::unordered_map<std::string, std::vector<Process>> &process_pool,
-    std::mutex &process_pool_mutex)
+TaskManager::TaskManager(ProcessPool &process_pool)
     : _process_pool(process_pool),
-      _process_pool_mutex(process_pool_mutex),
       _worker_thread(std::thread(&TaskManager::work, this)),
-      _stop_token(false) {}
+      _stop_token(false) {
+  std::cout << "TaskManager::TaskManager()" << std::endl;
+}
 
 TaskManager::~TaskManager() {
   _stop_token = true;
@@ -32,10 +31,11 @@ TaskManager::~TaskManager() {
 }
 
 void TaskManager::work() {
+  std::cout << "TaskManager::work()" << std::endl;
   while (!_stop_token) {
-    std::lock_guard<std::mutex> lock(_process_pool_mutex);
-    for (auto &[name, processes] : _process_pool) {
-      for (auto &process : processes) {
+    std::lock_guard lock(_process_pool.get_mutex());
+    for (auto &[_, process_group] : _process_pool) {
+      for (auto &process : process_group) {
         fsm(process);
       }
     }
