@@ -12,9 +12,13 @@
 
 class TaskManager {
 public:
-  explicit TaskManager(ProcessPool &process_pool, PollFds &poll_fds,
-                       int wake_up_fd);
+  TaskManager(ProcessPool &process_pool, PollFds &poll_fds);
   ~TaskManager();
+
+  void start();
+  void stop();
+
+  void set_wake_up_fd(int wake_up_fd);
 
 private:
   ProcessPool &_process_pool;

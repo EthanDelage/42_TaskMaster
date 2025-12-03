@@ -6,6 +6,7 @@
 #include "server/ClientSession.hpp"
 #include "server/Process.hpp"
 #include "server/ProcessPool.hpp"
+#include "server/TaskManager.hpp"
 
 #include <common/CommandManager.hpp>
 #include <sys/poll.h>
@@ -25,6 +26,7 @@ private:
   std::vector<ClientSession> _client_sessions;
   ClientSession *_current_client{};
   UnixSocketServer _server_socket;
+  TaskManager _task_manager;
   bool _running;
 
   void handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot);

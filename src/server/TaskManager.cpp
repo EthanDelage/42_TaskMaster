@@ -7,13 +7,12 @@
 #include <iostream>
 #include <thread>
 
-TaskManager::TaskManager(ProcessPool &process_pool, PollFds &poll_fds,
-                         int wake_up_fd)
+TaskManager::TaskManager(ProcessPool &process_pool, PollFds &poll_fds)
     : _process_pool(process_pool),
-      _worker_thread(std::thread(&TaskManager::work, this)),
       _stop_token(false),
       _poll_fds(poll_fds),
-      _wake_up_fd(wake_up_fd) {
+      _wake_up_fd(-1)
+{
   std::cout << "TaskManager::TaskManager()" << std::endl;
 }
 
@@ -25,6 +24,22 @@ TaskManager::~TaskManager() {
     std::cerr << "Worker thread is not joinable which is a bit weird\n";
   }
 }
+
+void TaskManager::start() {
+  if (_wake_up_fd == -1) {
+    throw std::runtime_error("TaskManager::start: wake up fd not set");
+  }
+  _worker_thread = std::thread(&TaskManager::work, this);
+}
+
+void TaskManager::stop() {
+  _stop_token = true;
+}
+
+void TaskManager::set_wake_up_fd(int wake_up_fd) {
+  _wake_up_fd = wake_up_fd;
+}
+
 
 void TaskManager::work() {
   std::cout << "TaskManager::work()" << std::endl;
@@ -149,7 +164,6 @@ void TaskManager::fsm_transit_state(Process &process,
     break;
   case Process::State::Stopped:
     next_state = Process::State::Stopped;
-    status = process.get_status();
     if ((process.get_pending_command() == Process::Command::Start ||
          process.get_pending_command() == Process::Command::Restart) ||
         (process.get_previous_state() == Process::State::Running &&
@@ -247,19 +261,26 @@ bool TaskManager::exit_process_gracefully(Process &process) {
   case Process::State::Exiting:
     process.update_status();
     if (process.get_state() != process.get_previous_state()) {
+      std::cout << "[TaskManager] Quitting " << process.get_process_config().name << std::endl;
       process.stop(process.get_process_config().stopsignal);
     }
     if (process.get_stoptime() >= process.get_process_config().stoptime &&
         process.get_status().running) {
       if (!process.get_status().killed) {
+        std::cout << "[TaskManager] Killing " << process.get_process_config().name << std::endl;
         process.kill();
       }
-        }
+    }
     if (!process.get_status().running) {
       process.set_state(Process::State::Stopped);
     }
+    process.set_previous_state(Process::State::Exiting);
     break;
   case Process::State::Stopped:
+    if (process.get_state() != process.get_previous_state()) {
+      std::cout << "[TaskManager] Stopped " << process.get_process_config().name << std::endl;
+    }
+    process.set_previous_state(Process::State::Stopped);
     return true;
   }
   return false;
