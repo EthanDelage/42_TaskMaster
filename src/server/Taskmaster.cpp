@@ -1,5 +1,6 @@
 #include "server/Taskmaster.hpp"
 #include "server/ConfigParser.hpp"
+#include "server/PollFds.hpp"
 #include "server/Process.hpp"
 #include "server/TaskManager.hpp"
 
@@ -22,27 +23,37 @@ Taskmaster::Taskmaster(const ConfigParser &config)
       _server_socket(SOCKET_PATH_NAME) {
   std::vector<process_config_s> program_configs = config.parse();
 
-  add_poll_fd({_server_socket.get_fd(), POLLIN, 0}, {FdType::Server});
+  if (pipe(_wake_up_pipe) == -1) {
+    throw std::runtime_error(
+        "Error: Taskmaster() failed to create wake_up pipe");
+  }
+  _poll_fds.add_poll_fd({_server_socket.get_fd(), POLLIN, 0},
+                        {PollFds::FdType::Server});
+  _poll_fds.add_poll_fd({_wake_up_pipe[PIPE_READ], POLLIN, 0},
+                        {PollFds::FdType::WakeUp});
+  // TODO: pass pipe write to task manager
   init_process_pool(program_configs);
 }
 
 void Taskmaster::loop() {
-  int result;
+  TaskManager task_manager(_process_pool, _process_pool_mutex, _poll_fds,
+                           _wake_up_pipe[PIPE_WRITE]);
 
-  TaskManager task_manager(_process_pool, _process_pool_mutex);
   set_sighup_handler();
   if (_server_socket.listen(BACKLOG) == -1) {
     return;
   }
   while (true) {
-    result = poll(_poll_fds.data(), _poll_fds.size(), -1);
+    PollFds::snapshot_t poll_fds_snapshot = _poll_fds.get_snapshot();
+    int result = poll(poll_fds_snapshot.poll_fds.data(),
+                      poll_fds_snapshot.poll_fds.size(), -1);
     if (result == -1) {
       if (errno != EINTR) {
         throw std::runtime_error("poll()");
       }
       continue;
     }
-    handle_poll_fds();
+    handle_poll_fds(poll_fds_snapshot);
     if (sighup_received_g) {
       // TODO: reload the config and add log
       for (auto &client_session : _client_sessions) {
@@ -66,33 +77,31 @@ void Taskmaster::init_process_pool(
         std::make_shared<process_config_s>(std::move(program_config));
     for (size_t i = 0; i < shared_program_config->numprocs; ++i) {
       processes.emplace_back(shared_program_config);
-      add_poll_fd({processes[i].get_stdout_pipe()[PIPE_READ], POLLIN, 0},
-                  {FdType::Process});
-      add_poll_fd({processes[i].get_stderr_pipe()[PIPE_READ], POLLIN, 0},
-                  {FdType::Process});
     }
     _process_pool.insert({shared_program_config->name, std::move(processes)});
   }
 }
 
-void Taskmaster::handle_poll_fds() {
-  for (size_t index = 1; index < _poll_fds.size(); index++) {
-    const pollfd *poll_fd = &_poll_fds[index];
-    const poll_fd_metadata_t *fd_metadata = &_poll_fds_metadata[index];
+void Taskmaster::handle_poll_fds(PollFds::snapshot_t poll_fds_snapshot) {
+  for (size_t index = 1; index < poll_fds_snapshot.poll_fds.size(); index++) {
+    const pollfd poll_fd = poll_fds_snapshot.poll_fds[index];
+    const PollFds::metadata_t fd_metadata = poll_fds_snapshot.metadata[index];
 
-    if (poll_fd->revents != 0) {
-      if (fd_metadata->type == FdType::Client) {
-        handle_client_command(*poll_fd);
-      } else if (fd_metadata->type == FdType::Process) {
-        if ((poll_fd->revents & POLLNVAL) != 0) {
-          remove_poll_fd(poll_fd->fd);
+    if (poll_fd.revents != 0) {
+      if (fd_metadata.type == PollFds::FdType::Client) {
+        handle_client_command(poll_fd);
+      } else if (fd_metadata.type == PollFds::FdType::Process) {
+        if ((poll_fd.revents & POLLNVAL) != 0) {
+          _poll_fds.remove_poll_fd(poll_fd.fd); // TODO: Is this really useful ?
         } else {
-          read_process_output(poll_fd->fd);
+          read_process_output(poll_fd.fd);
         }
+      } else if (fd_metadata.type == PollFds::FdType::WakeUp) {
+        handle_wake_up(poll_fd);
       }
     }
   }
-  handle_connection();
+  handle_connection(poll_fds_snapshot);
 }
 
 void Taskmaster::handle_client_command(const pollfd &poll_fd) {
@@ -117,6 +126,25 @@ void Taskmaster::handle_client_command(const pollfd &poll_fd) {
   }
 }
 
+void Taskmaster::handle_connection(PollFds::snapshot_t poll_fds_snapshot) {
+  if (poll_fds_snapshot.poll_fds[0].revents & POLLIN) {
+    int client_fd = _server_socket.accept_client();
+    if (client_fd == -1) {
+      // TODO: log handle_connection() failed
+      return;
+    }
+    // TODO: add log
+    std::lock_guard lock(_poll_fds.get_mutex());
+    _poll_fds.add_poll_fd({client_fd, POLLIN, 0}, {PollFds::FdType::Client});
+    _client_sessions.emplace_back(client_fd);
+  }
+}
+
+void Taskmaster::handle_wake_up(const pollfd &poll_fd) {
+  char buffer[SOCKET_BUFFER_SIZE];
+  Socket::read(poll_fd.fd, buffer, SOCKET_BUFFER_SIZE);
+}
+
 void Taskmaster::read_process_output(int fd) {
   for (auto &[name, processes] : _process_pool) {
     for (auto &process : processes) {
@@ -129,40 +157,11 @@ void Taskmaster::read_process_output(int fd) {
   }
 }
 
-void Taskmaster::handle_connection() {
-  if (_poll_fds[0].revents & POLLIN) {
-    int client_fd = _server_socket.accept_client();
-    if (client_fd == -1) {
-      // TODO: log handle_connection() failed
-      return;
-    }
-    // TODO: add log
-    add_poll_fd({client_fd, POLLIN, 0}, {FdType::Client});
-    _client_sessions.emplace_back(client_fd);
-  }
-}
-
 void Taskmaster::disconnect_client(int fd) {
   // TODO: add log
   remove_client_session(fd);
-  remove_poll_fd(fd);
-}
-
-void Taskmaster::add_poll_fd(pollfd fd, poll_fd_metadata_t metadata) {
-  _poll_fds.emplace_back(fd);
-  _poll_fds_metadata.emplace_back(metadata);
-}
-
-void Taskmaster::remove_poll_fd(const int fd) {
-  long index;
-  auto it = std::find_if(_poll_fds.begin(), _poll_fds.end(),
-                         [fd](pollfd poll_fd) { return fd == poll_fd.fd; });
-  if (it == _poll_fds.end()) {
-    throw std::invalid_argument("remove_poll_fd(): invalid fd");
-  }
-  index = std::distance(_poll_fds.begin(), it);
-  _poll_fds.erase(it);
-  _poll_fds_metadata.erase(_poll_fds_metadata.begin() + index);
+  std::lock_guard lock(_poll_fds.get_mutex());
+  _poll_fds.remove_poll_fd(fd);
 }
 
 void Taskmaster::remove_client_session(int fd) {

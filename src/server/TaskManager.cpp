@@ -6,21 +6,15 @@
 #include <iostream>
 #include <thread>
 
-static void fsm_run_task(Process &process, const process_config_t &config);
-static void fsm_transit_state(Process &process, const process_config_t &config);
-static void fsm_waiting_task(Process &process, const process_config_t &config);
-static void fsm_starting_task(Process &process, const process_config_t &config);
-static void fsm_running_task(Process &process);
-static void fsm_exiting_task(Process &process, const process_config_t &config);
-static void fsm_stopped_task(Process &process);
-
 TaskManager::TaskManager(
     std::unordered_map<std::string, std::vector<Process>> &process_pool,
-    std::mutex &process_pool_mutex)
+    std::mutex &process_pool_mutex, PollFds &poll_fds, int wake_up_fd)
     : _process_pool(process_pool),
       _process_pool_mutex(process_pool_mutex),
       _worker_thread(std::thread(&TaskManager::work, this)),
-      _stop_token(false) {}
+      _stop_token(false),
+      _poll_fds(poll_fds),
+      _wake_up_fd(wake_up_fd) {}
 
 TaskManager::~TaskManager() {
   _stop_token = true;
@@ -49,7 +43,8 @@ void TaskManager::fsm(Process &process) {
   fsm_transit_state(process, config);
 }
 
-static void fsm_run_task(Process &process, const process_config_t &config) {
+void TaskManager::fsm_run_task(Process &process,
+                               const process_config_t &config) {
   switch (process.get_state()) {
   case Process::State::Waiting:
     fsm_waiting_task(process, config);
@@ -69,8 +64,8 @@ static void fsm_run_task(Process &process, const process_config_t &config) {
   }
 }
 
-static void fsm_transit_state(Process &process,
-                              const process_config_t &config) {
+void TaskManager::fsm_transit_state(Process &process,
+                                    const process_config_t &config) {
   Process::status_t status;
   Process::State next_state;
   switch (process.get_state()) {
@@ -150,14 +145,14 @@ static void fsm_transit_state(Process &process,
   process.set_state(next_state);
 }
 
-static void fsm_waiting_task(Process &process, const process_config_t &config) {
-  if (config.autostart) {
-    process.start();
-  }
+void TaskManager::fsm_waiting_task(Process &, const process_config_t &) {
+  // if (config.autostart) {
+  //   process.start();
+  // }
 }
 
-static void fsm_starting_task(Process &process,
-                              const process_config_t &config) {
+void TaskManager::fsm_starting_task(Process &process,
+                                    const process_config_t &config) {
   if (process.get_state() != process.get_previous_state()) {
     if (process.get_pending_command() == Process::Command::Start ||
         process.get_pending_command() == Process::Command::Restart) {
@@ -167,6 +162,12 @@ static void fsm_starting_task(Process &process,
       process.set_pending_command(Process::Command::None);
     }
     process.start();
+    std::lock_guard lock(_poll_fds.get_mutex());
+    _poll_fds.add_poll_fd({process.get_stdout_pipe()[PIPE_READ], POLLIN, 0},
+                          {PollFds::FdType::Process});
+    _poll_fds.add_poll_fd({process.get_stderr_pipe()[PIPE_READ], POLLIN, 0},
+                          {PollFds::FdType::Process});
+    Socket::write(_wake_up_fd, "x");
   }
   if (config.starttime != 0) { // Wait the process only if starttime is set
     process.update_status();
@@ -177,9 +178,12 @@ static void fsm_starting_task(Process &process,
   }
 }
 
-static void fsm_running_task(Process &process) { process.update_status(); }
+void TaskManager::fsm_running_task(Process &process) {
+  process.update_status();
+}
 
-static void fsm_exiting_task(Process &process, const process_config_t &config) {
+void TaskManager::fsm_exiting_task(Process &process,
+                                   const process_config_t &config) {
   process.update_status();
   if (process.get_stoptime() >= config.stoptime &&
       process.get_status().running) {
@@ -188,8 +192,12 @@ static void fsm_exiting_task(Process &process, const process_config_t &config) {
   }
 }
 
-static void fsm_stopped_task(Process &process) {
+void TaskManager::fsm_stopped_task(Process &process) {
   if (process.get_state() != process.get_previous_state()) {
+    std::lock_guard lock(_poll_fds.get_mutex());
+    _poll_fds.remove_poll_fd(process.get_stdout_pipe()[PIPE_READ]);
+    _poll_fds.remove_poll_fd(process.get_stderr_pipe()[PIPE_READ]);
+    Socket::write(_wake_up_fd, "x");
     process.close_outputs();
   }
   if (process.get_pending_command() == Process::Command::Stop) {

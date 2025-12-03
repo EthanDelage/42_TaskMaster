@@ -6,6 +6,7 @@ add_executable(server
         ConfigParser.cpp
         UnixSocketServer.cpp
         ClientSession.cpp
+        PollFds.cpp
 )
 
 include(FetchContent)
