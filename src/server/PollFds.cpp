@@ -1,5 +1,7 @@
 #include "server/PollFds.hpp"
 
+#include <algorithm>
+
 PollFds::PollFds() {}
 
 void PollFds::add_poll_fd(pollfd fd, metadata_t metadata) {

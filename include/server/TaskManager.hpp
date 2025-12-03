@@ -25,6 +25,7 @@ private:
 
   void work();
   void fsm(Process &process);
+  void exit_gracefully();
 
   void fsm_run_task(Process &process, const process_config_t &config);
   static void fsm_transit_state(Process &process,
@@ -35,6 +36,7 @@ private:
   static void fsm_exiting_task(Process &process,
                                const process_config_t &config);
   void fsm_stopped_task(Process &process);
+  bool exit_process_gracefully(Process &process);
 };
 
 #endif // TASKMANAGER_HPP

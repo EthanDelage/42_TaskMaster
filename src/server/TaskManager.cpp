@@ -28,15 +28,35 @@ TaskManager::~TaskManager() {
 
 void TaskManager::work() {
   std::cout << "TaskManager::work()" << std::endl;
-  while (!_stop_token) {
+  try {
+    while (!_stop_token) {
+      std::lock_guard lock(_process_pool.get_mutex());
+      for (auto &[_, process_group] : _process_pool) {
+        for (auto &process : process_group) {
+          fsm(process);
+        }
+      }
+    }
+  } catch (std::exception &e) {
+    std::cerr << e.what() << std::endl;
+  }
+  exit_gracefully();
+}
+
+void TaskManager::exit_gracefully() {
+  bool flag;
+  do {
+    flag = false;
     std::lock_guard lock(_process_pool.get_mutex());
     for (auto &[_, process_group] : _process_pool) {
       for (auto &process : process_group) {
-        fsm(process);
+        if (!exit_process_gracefully(process)) {
+          // The process did not exit yet, so we stay in the loop
+          flag = true;
+        }
       }
     }
-  }
-  // TODO: Exit all processes cleanly
+  } while (flag);
 }
 
 void TaskManager::fsm(Process &process) {
@@ -187,7 +207,8 @@ void TaskManager::fsm_exiting_task(Process &process,
   if (process.get_state() != process.get_previous_state()) {
     process.stop(config.stopsignal);
     return;
-  } else if (process.get_stoptime() >= config.stoptime &&
+  }
+  if (process.get_stoptime() >= config.stoptime &&
              process.get_status().running) {
     if (!process.get_status().killed) {
       process.kill();
@@ -209,4 +230,37 @@ void TaskManager::fsm_stopped_task(Process &process) {
       process.get_pending_command() == Process::Command::Stop) {
     process.set_pending_command(Process::Command::None);
   }
+}
+
+/*
+ * @return true if the process exited, false otherwise
+ */
+bool TaskManager::exit_process_gracefully(Process &process) {
+  switch (process.get_state()) {
+  case Process::State::Waiting:
+    process.set_state(Process::State::Stopped);
+    break;
+  case Process::State::Starting:
+  case Process::State::Running:
+    process.set_state(Process::State::Exiting);
+    break;
+  case Process::State::Exiting:
+    process.update_status();
+    if (process.get_state() != process.get_previous_state()) {
+      process.stop(process.get_process_config().stopsignal);
+    }
+    if (process.get_stoptime() >= process.get_process_config().stoptime &&
+        process.get_status().running) {
+      if (!process.get_status().killed) {
+        process.kill();
+      }
+        }
+    if (!process.get_status().running) {
+      process.set_state(Process::State::Stopped);
+    }
+    break;
+  case Process::State::Stopped:
+    return true;
+  }
+  return false;
 }

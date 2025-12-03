@@ -2,6 +2,7 @@
 #define POLLFDS_HPP
 #include <sys/poll.h>
 #include <vector>
+#include <mutex>
 
 class PollFds {
 public:
