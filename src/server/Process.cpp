@@ -89,24 +89,30 @@ void Process::start() {
 
 void Process::stop(const int sig) {
   if (_pid == -1) {
+    _status.running = false;
     throw std::runtime_error(
         "Process::stop(): trying to kill process with pid -1");
   }
   if (::kill(_pid, sig) == -1) {
+    _pid = -1;
+    _status.running = false;
     throw std::runtime_error(std::string("kill: ") + strerror(errno));
   }
   _stop_timestamp = std::chrono::steady_clock::now();
 }
 
 void Process::kill() {
+  _status.killed = true;
   if (_pid == -1) {
+    _status.running = false;
     throw std::runtime_error(
         "Process::kill(): trying to kill process with pid -1");
   }
   if (::kill(_pid, SIGKILL) == -1) {
+    _pid = -1;
+    _status.running = false;
     throw std::runtime_error(std::string("kill: ") + strerror(errno));
   }
-  _status.killed = true;
 }
 
 void Process::update_status(void) {
@@ -116,6 +122,8 @@ void Process::update_status(void) {
   if (result == -1) {
     // Here waitpid returned an error, it may be due to
     // this function being called without the process being started.
+    _status.running = false;
+    _pid = -1;
     throw std::runtime_error(std::string("waitpid: ") + strerror(errno));
   }
   if (result == 0) {
@@ -123,8 +131,8 @@ void Process::update_status(void) {
     return;
   }
   _status.running = false;
-  _status.exitstatus = WEXITSTATUS(status);
   _pid = -1;
+  _status.exitstatus = WEXITSTATUS(status);
 }
 
 /**
