@@ -40,6 +40,8 @@ public:
   int update_status(void);
   bool check_autorestart(void);
 
+  void read_stdout();
+  void read_stderr();
   void attach_client(int fd);
   void detach_client(int fd);
 
@@ -67,6 +69,7 @@ private:
   void setup_workingdir() const;
   void setup_umask() const;
   void setup_outputs();
+  void forward_output(int read_fd, int output_fd);
 
   std::shared_ptr<const process_config_s> _process_config;
   pid_t _pid;

@@ -94,7 +94,6 @@ void Taskmaster::handle_poll_fds() {
 void Taskmaster::handle_client_command(const pollfd &poll_fd) {
   const auto it = get_client_session_from_fd(poll_fd.fd);
   std::string cmd_line;
-  std::string cmd;
 
   if (it == _client_sessions.end()) {
     throw std::runtime_error("handle_client_command(): invalid fd");
@@ -115,18 +114,12 @@ void Taskmaster::handle_client_command(const pollfd &poll_fd) {
 }
 
 void Taskmaster::read_process_output(int fd) {
-  (void)fd; // TODO: remove this
   for (auto &[name, processes] : _process_pool) {
     for (auto &process : processes) {
-      (void)process; // TODO: remove this
-      if (false) {
-        // TODO: change condition to (fd == process.get_stdout_pipe()[read])
-        // TODO: process.read_stdout()
-        return;
-      } else if (false) {
-        // TODO: change condition to (fd == process.get_stderr_pipe()[read])
-        // TODO: process.read_stderr()
-        return;
+      if (fd == process.get_stdout_pipe()[PIPE_READ]) {
+        process.read_stdout();
+      } else if (fd == process.get_stderr_pipe()[PIPE_READ]) {
+        process.read_stderr();
       }
     }
   }

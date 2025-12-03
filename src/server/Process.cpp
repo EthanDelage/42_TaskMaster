@@ -1,5 +1,6 @@
 #include "server/Process.hpp"
 
+#include "common/socket/Socket.hpp"
 #include "server/ConfigParser.hpp"
 #include <chrono>
 #include <cstdlib>
@@ -132,6 +133,14 @@ bool Process::check_autorestart(void) {
   return false;
 }
 
+void Process::read_stdout() {
+  forward_output(_stdout_pipe[PIPE_READ], _stdout_fd);
+}
+
+void Process::read_stderr() {
+  forward_output(_stderr_pipe[PIPE_READ], _stderr_fd);
+}
+
 void Process::attach_client(int fd) {
   if (std::find(_attached_client.begin(), _attached_client.end(), fd) !=
       _attached_client.end()) {
@@ -236,6 +245,32 @@ void Process::setup_umask() const { umask(_process_config->umask); }
 void Process::setup_outputs() {
   redirect_output(_stdout_pipe[PIPE_WRITE], STDOUT_FILENO);
   redirect_output(_stderr_pipe[PIPE_WRITE], STDERR_FILENO);
+}
+
+/**
+ * @brief Read data from a pipe and forward it to the main output descriptor
+ *        as well as all attached client sockets.
+ *
+ * @param read_fd   File descriptor from which to read (pipe read end).
+ * @param output_fd File descriptor to forward the data to.
+ *
+ * @note If the read operation fails, the function prints an error using
+ * perror() and returns without attempting to forward any data.
+ */
+void Process::forward_output(int read_fd, int output_fd) {
+  char buffer[SOCKET_BUFFER_SIZE];
+  ssize_t ret;
+
+  ret = Socket::read(read_fd, buffer, SOCKET_BUFFER_SIZE);
+  if (ret == -1) {
+    perror("read");
+    return;
+  }
+  Socket::write(output_fd, buffer, ret);
+  for (auto client : _attached_client) {
+    std::cout << client << std::endl;
+    Socket::write(client, buffer, ret);
+  }
 }
 
 static void redirect_output(int pipe_fd, int output_fd) {
