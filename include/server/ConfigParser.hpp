@@ -2,6 +2,7 @@
 #define CONFIG_HPP
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <yaml-cpp/yaml.h>
 extern "C" {
@@ -14,7 +15,7 @@ struct WordexpDestructor {
   void operator()(wordexp_t *p) const;
 };
 
-typedef struct process_config_s {
+typedef struct {
   std::string name;
   std::unique_ptr<wordexp_t, WordexpDestructor> cmd;
   std::string cmd_path;
@@ -36,7 +37,7 @@ typedef struct process_config_s {
 class ConfigParser {
 public:
   explicit ConfigParser(std::string config_path);
-  std::vector<process_config_t> parse() const;
+  std::unordered_map<std::string, process_config_t> parse() const;
 
 private:
   std::string _config_path;

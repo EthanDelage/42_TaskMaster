@@ -1,20 +1,21 @@
 #include "server/TaskManager.hpp"
 
+#include "common/socket/Socket.hpp"
 #include "server/ConfigParser.hpp"
 #include "server/Process.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <thread>
 
-TaskManager::TaskManager(
-    std::unordered_map<std::string, std::vector<Process>> &process_pool,
-    std::mutex &process_pool_mutex, PollFds &poll_fds, int wake_up_fd)
+TaskManager::TaskManager(ProcessPool &process_pool, PollFds &poll_fds,
+                         int wake_up_fd)
     : _process_pool(process_pool),
-      _process_pool_mutex(process_pool_mutex),
       _worker_thread(std::thread(&TaskManager::work, this)),
       _stop_token(false),
       _poll_fds(poll_fds),
-      _wake_up_fd(wake_up_fd) {}
+      _wake_up_fd(wake_up_fd) {
+  std::cout << "TaskManager::TaskManager()" << std::endl;
+}
 
 TaskManager::~TaskManager() {
   _stop_token = true;
@@ -26,10 +27,11 @@ TaskManager::~TaskManager() {
 }
 
 void TaskManager::work() {
+  std::cout << "TaskManager::work()" << std::endl;
   while (!_stop_token) {
-    std::lock_guard<std::mutex> lock(_process_pool_mutex);
-    for (auto &[name, processes] : _process_pool) {
-      for (auto &process : processes) {
+    std::lock_guard lock(_process_pool.get_mutex());
+    for (auto &[_, process_group] : _process_pool) {
+      for (auto &process : process_group) {
         fsm(process);
       }
     }
@@ -47,7 +49,7 @@ void TaskManager::fsm_run_task(Process &process,
                                const process_config_t &config) {
   switch (process.get_state()) {
   case Process::State::Waiting:
-    fsm_waiting_task(process, config);
+    fsm_waiting_task();
     break;
   case Process::State::Starting:
     fsm_starting_task(process, config);
@@ -120,6 +122,8 @@ void TaskManager::fsm_transit_state(Process &process,
     next_state = Process::State::Exiting;
     status = process.get_status();
     if (!status.running) {
+      std::cout << "[TaskManager] " << config.name << ":"
+                << " (Exiting)>(Stopped)" << std::endl;
       next_state = Process::State::Stopped;
     }
     break;
@@ -145,11 +149,7 @@ void TaskManager::fsm_transit_state(Process &process,
   process.set_state(next_state);
 }
 
-void TaskManager::fsm_waiting_task(Process &, const process_config_t &) {
-  // if (config.autostart) {
-  //   process.start();
-  // }
-}
+void TaskManager::fsm_waiting_task(void) {}
 
 void TaskManager::fsm_starting_task(Process &process,
                                     const process_config_t &config) {
@@ -185,10 +185,14 @@ void TaskManager::fsm_running_task(Process &process) {
 void TaskManager::fsm_exiting_task(Process &process,
                                    const process_config_t &config) {
   process.update_status();
-  if (process.get_stoptime() >= config.stoptime &&
-      process.get_status().running) {
-    process.kill();
-    process.update_status();
+  if (process.get_state() != process.get_previous_state()) {
+    process.stop(config.stopsignal);
+    return;
+  } else if (process.get_stoptime() >= config.stoptime &&
+             process.get_status().running) {
+    if (!process.get_status().killed) {
+      process.kill();
+    }
   }
 }
 
@@ -200,7 +204,11 @@ void TaskManager::fsm_stopped_task(Process &process) {
     Socket::write(_wake_up_fd, "x");
     process.close_outputs();
   }
-  if (process.get_pending_command() == Process::Command::Stop) {
+  if (process.get_pending_command() == Process::Command::Restart) {
+    return;
+  }
+  if (process.get_previous_state() != Process::State::Stopped ||
+      process.get_pending_command() == Process::Command::Stop) {
     process.set_pending_command(Process::Command::None);
   }
 }

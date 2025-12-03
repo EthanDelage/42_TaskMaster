@@ -13,6 +13,7 @@ class Process {
 public:
   typedef struct {
     bool running;
+    bool killed;
     int exitstatus;
   } status_t;
 
@@ -46,7 +47,7 @@ public:
   void detach_client(int fd);
   void close_outputs();
 
-  const process_config_t &get_process_config();
+  const process_config_t &get_process_config() const;
   pid_t get_pid() const;
   std::chrono::steady_clock::time_point get_start_timestamp() const;
   size_t get_num_retries() const;
@@ -62,7 +63,7 @@ public:
   void set_num_retries(size_t startretries);
   void set_state(State state);
   void set_previous_state(State state);
-  void set_pending_command(Command);
+  void set_pending_command(Command command);
 
 private:
   void setup();
@@ -72,7 +73,7 @@ private:
   void setup_outputs();
   void forward_output(int read_fd, int output_fd);
 
-  std::shared_ptr<const process_config_s> _process_config;
+  std::shared_ptr<const process_config_t> _process_config;
   pid_t _pid;
   std::chrono::steady_clock::time_point _start_timestamp;
   std::chrono::steady_clock::time_point _stop_timestamp;
@@ -88,6 +89,7 @@ private:
   std::vector<int> _attached_client;
 };
 
+std::ostream &operator<<(std::ostream &os, const Process &process);
 std::ostream &operator<<(std::ostream &os, const Process::State &state);
 
 #endif // PROCESS_HPP

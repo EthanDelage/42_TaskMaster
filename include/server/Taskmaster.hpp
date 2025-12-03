@@ -5,9 +5,9 @@
 #include "UnixSocketServer.hpp"
 #include "server/ClientSession.hpp"
 #include "server/Process.hpp"
+#include "server/ProcessPool.hpp"
 
 #include <common/CommandManager.hpp>
-#include <mutex>
 #include <sys/poll.h>
 #include <unordered_map>
 
@@ -19,21 +19,24 @@ public:
 private:
   ConfigParser _config;
   CommandManager _command_manager;
-  std::unordered_map<std::string, std::vector<Process>> _process_pool;
-  std::mutex _process_pool_mutex;
+  ProcessPool _process_pool;
   PollFds _poll_fds;
   int _wake_up_pipe[2];
   std::vector<ClientSession> _client_sessions;
   ClientSession *_current_client{};
   UnixSocketServer _server_socket;
+  bool _running;
 
-  void init_process_pool(std::vector<process_config_t> &programs_configs);
   void handle_poll_fds(PollFds::snapshot_t poll_fds_snapshot);
   void handle_client_command(const pollfd &poll_fd);
   void handle_connection(PollFds::snapshot_t poll_fds_snapshot);
   void handle_wake_up(const pollfd &poll_fd);
   void read_process_output(int fd);
+  void handle_connection();
+  void reload_config();
   void disconnect_client(int fd);
+  void request_command(const std::vector<std::string> &args,
+                       Process::Command command);
   void remove_client_session(int fd);
   static void set_sighup_handler();
 

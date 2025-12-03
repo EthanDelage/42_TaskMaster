@@ -13,6 +13,8 @@
 #include <unistd.h>
 #include <unordered_map>
 
+static bool compare_config(const process_config_t &left,
+                           const process_config_t &right);
 static void sighup_handler(int);
 
 volatile sig_atomic_t sighup_received_g = 0;
@@ -20,9 +22,9 @@ volatile sig_atomic_t sighup_received_g = 0;
 Taskmaster::Taskmaster(const ConfigParser &config)
     : _config(config),
       _command_manager(get_commands_callback()),
-      _server_socket(SOCKET_PATH_NAME) {
-  std::vector<process_config_s> program_configs = config.parse();
-
+      _process_pool(config.parse()),
+      _server_socket(SOCKET_PATH_NAME),
+      _running(true) {
   if (pipe(_wake_up_pipe) == -1) {
     throw std::runtime_error(
         "Error: Taskmaster() failed to create wake_up pipe");
@@ -31,19 +33,15 @@ Taskmaster::Taskmaster(const ConfigParser &config)
                         {PollFds::FdType::Server});
   _poll_fds.add_poll_fd({_wake_up_pipe[PIPE_READ], POLLIN, 0},
                         {PollFds::FdType::WakeUp});
-  // TODO: pass pipe write to task manager
-  init_process_pool(program_configs);
 }
 
 void Taskmaster::loop() {
-  TaskManager task_manager(_process_pool, _process_pool_mutex, _poll_fds,
-                           _wake_up_pipe[PIPE_WRITE]);
-
+  TaskManager task_manager(_process_pool, _poll_fds, _wake_up_pipe[PIPE_WRITE]);
   set_sighup_handler();
   if (_server_socket.listen(BACKLOG) == -1) {
     return;
   }
-  while (true) {
+  while (_running) {
     PollFds::snapshot_t poll_fds_snapshot = _poll_fds.get_snapshot();
     int result = poll(poll_fds_snapshot.poll_fds.data(),
                       poll_fds_snapshot.poll_fds.size(), -1);
@@ -55,7 +53,7 @@ void Taskmaster::loop() {
     }
     handle_poll_fds(poll_fds_snapshot);
     if (sighup_received_g) {
-      // TODO: reload the config and add log
+      reload_config();
       for (auto &client_session : _client_sessions) {
         if (client_session.get_reload_request()) {
           // TODO: update the reload response message
@@ -65,20 +63,6 @@ void Taskmaster::loop() {
       }
       sighup_received_g = 0;
     }
-  }
-}
-
-void Taskmaster::init_process_pool(
-    std::vector<process_config_s> &programs_configs) {
-  for (auto &program_config : programs_configs) {
-    std::vector<Process> processes;
-    std::shared_ptr<process_config_s> shared_program_config;
-    shared_program_config =
-        std::make_shared<process_config_s>(std::move(program_config));
-    for (size_t i = 0; i < shared_program_config->numprocs; ++i) {
-      processes.emplace_back(shared_program_config);
-    }
-    _process_pool.insert({shared_program_config->name, std::move(processes)});
   }
 }
 
@@ -156,6 +140,32 @@ void Taskmaster::read_process_output(int fd) {
     }
   }
 }
+void Taskmaster::reload_config() {
+  ProcessPool new_pool(_config.parse());
+
+  std::lock_guard lock(_process_pool.get_mutex());
+  std::cout << "Reloading the config..." << std::endl;
+  for (auto it = new_pool.begin(); it != new_pool.end();) {
+    auto old_it = _process_pool.find(it->first);
+    if (old_it != _process_pool.end()) {
+      std::cout << "Checking [" << it->first << "] ... ";
+      if (compare_config(old_it->second.get_process_config(),
+                         it->second.get_process_config())) {
+        std::cout << "no need to reload" << std::endl;
+        it = new_pool.erase(it);
+        new_pool.move_from(_process_pool, old_it->first);
+        continue;
+      }
+      std::cout << "will be reloaded" << std::endl;
+    }
+    ++it;
+  }
+  for (auto &it : _process_pool) {
+    std::cout << "Stopping old process [" << it.first << "]" << std::endl;
+    it.second.stop(SIGKILL);
+  }
+  _process_pool = std::move(new_pool);
+}
 
 void Taskmaster::disconnect_client(int fd) {
   // TODO: add log
@@ -183,27 +193,42 @@ void Taskmaster::set_sighup_handler() {
   }
 }
 
-void Taskmaster::status(const std::vector<std::string> &) {}
+void Taskmaster::status(const std::vector<std::string> &) {
+  std::ostringstream oss;
 
-void Taskmaster::start(const std::vector<std::string> &args) { (void)args; }
+  oss << _process_pool;
+  _current_client->send_response(oss.str());
+}
 
-void Taskmaster::stop(const std::vector<std::string> &args) { (void)args; }
+void Taskmaster::start(const std::vector<std::string> &args) {
 
-void Taskmaster::restart(const std::vector<std::string> &args) { (void)args; }
+  request_command(args, Process::Command::Start);
+}
+
+void Taskmaster::stop(const std::vector<std::string> &args) {
+  request_command(args, Process::Command::Stop);
+}
+
+void Taskmaster::restart(const std::vector<std::string> &args) {
+  request_command(args, Process::Command::Restart);
+}
 
 void Taskmaster::reload(const std::vector<std::string> &) {
   sighup_received_g = 1;
   _current_client->set_reload_request(true);
 }
 
-void Taskmaster::quit(const std::vector<std::string> &) {}
+void Taskmaster::quit(const std::vector<std::string> &) {
+  _running = false;
+  _current_client->send_response("Quitting taskmaster...\n");
+}
 
 void Taskmaster::help(const std::vector<std::string> &) {
   // No server-side implementation
 }
 
 void Taskmaster::attach(const std::vector<std::string> &args) {
-  std::lock_guard<std::mutex> lock(_process_pool_mutex);
+  std::lock_guard<std::mutex> lock(_process_pool.get_mutex());
   auto process_group = _process_pool.find(args[1]);
   if (process_group == _process_pool.end()) {
     // TODO: add log
@@ -217,7 +242,7 @@ void Taskmaster::attach(const std::vector<std::string> &args) {
 }
 
 void Taskmaster::detach(const std::vector<std::string> &args) {
-  std::lock_guard<std::mutex> lock(_process_pool_mutex);
+  std::lock_guard<std::mutex> lock(_process_pool.get_mutex());
   auto process_group = _process_pool.find(args[1]);
   if (process_group == _process_pool.end()) {
     // TODO: add log
@@ -228,6 +253,22 @@ void Taskmaster::detach(const std::vector<std::string> &args) {
     process.detach_client(_current_client->get_fd());
   }
   _current_client->send_response("Successfully detached\n");
+}
+
+void Taskmaster::request_command(const std::vector<std::string> &args,
+                                 Process::Command command) {
+  for (std::string process_name : args) {
+    std::lock_guard lock(_process_pool.get_mutex());
+    auto process_pool_item = _process_pool.find(process_name);
+    if (process_pool_item == _process_pool.end()) {
+      // TODO the process was not found
+      continue;
+    }
+    for (Process &process : process_pool_item->second) {
+      process.set_pending_command(command);
+    }
+  }
+  _current_client->send_response("Command issued successfully\n");
 }
 
 std::vector<ClientSession>::iterator
@@ -260,6 +301,26 @@ Taskmaster::get_commands_callback() {
       {CMD_DETACH_STR,
        [this](const std::vector<std::string> &args) { detach(args); }},
   };
+}
+
+static bool compare_config(const process_config_t &left,
+                           const process_config_t &right) {
+  if (left.cmd->we_wordc != right.cmd->we_wordc) {
+    return false;
+  }
+  for (size_t i = 0; i < left.cmd->we_wordc; i++) {
+    if (strcmp(left.cmd->we_wordv[i], right.cmd->we_wordv[i]) != 0) {
+      return false;
+    }
+  }
+  return left.name == right.name && left.cmd_path == right.cmd_path &&
+         left.workingdir == right.workingdir && left.stdout == right.stdout &&
+         left.stderr == right.stderr && left.stopsignal == right.stopsignal &&
+         left.numprocs == right.numprocs && left.starttime == right.starttime &&
+         left.stoptime == right.stoptime && left.umask == right.umask &&
+         left.autostart == right.autostart &&
+         left.autorestart == right.autorestart && left.env == right.env &&
+         left.exitcodes == right.exitcodes;
 }
 
 static void sighup_handler(int) { sighup_received_g = 1; }

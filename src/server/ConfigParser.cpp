@@ -48,8 +48,8 @@ static bool is_file_writeable(std::string path);
 ConfigParser::ConfigParser(std::string config_path)
     : _config_path(std::move(config_path)) {}
 
-std::vector<process_config_s> ConfigParser::parse() const {
-  std::vector<process_config_s> process_configs;
+std::unordered_map<std::string, process_config_t> ConfigParser::parse() const {
+  std::unordered_map<std::string, process_config_t> process_configs;
   std::unordered_set<std::string> seen_names;
 
   YAML::Node root = YAML::LoadFile(_config_path);
@@ -58,7 +58,7 @@ std::vector<process_config_s> ConfigParser::parse() const {
     throw std::runtime_error("Config: Missing 'process' section in config");
   }
   for (const auto &node : root["process"]) {
-    std::string process_name = node.first.as<std::string>();
+    auto process_name = node.first.as<std::string>();
     if (!is_valid_process_name(process_name)) {
       throw std::runtime_error(
           "Config: process names must contain only letters, numbers and "
@@ -73,8 +73,7 @@ std::vector<process_config_s> ConfigParser::parse() const {
     // TODO: try catch
     process_config_t process_config =
         parse_process_config(std::move(process_name), process_node);
-
-    process_configs.push_back(std::move(process_config));
+    process_configs.insert({process_name, std::move(process_config)});
   }
   return process_configs;
 }
@@ -225,7 +224,10 @@ static void parse_startretries(const YAML::Node &config_node,
 static void parse_stoptime(const YAML::Node &config_node,
                            process_config_t &process_config) {
   process_config.stoptime =
-      config_node["stoptime"] ? config_node["stoptime"].as<unsigned long>() : 0;
+      config_node["stoptime"] ? config_node["stoptime"].as<unsigned long>() : 3;
+  if (process_config.stoptime == 0) {
+    throw std::runtime_error("ProgramConfig: Invalid stoptime value (0)");
+  }
 }
 
 static void parse_umask(const YAML::Node &config_node,
