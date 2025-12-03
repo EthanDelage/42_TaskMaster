@@ -36,6 +36,7 @@ private:
   std::vector<ClientSession> _client_sessions;
   ClientSession *_current_client{};
   UnixSocketServer _server_socket;
+  bool _running;
 
   void init_process_pool(std::vector<process_config_t> &programs_configs);
   void handle_poll_fds();
@@ -45,6 +46,8 @@ private:
   void disconnect_client(int fd);
   void add_poll_fd(pollfd fd, poll_fd_metadata_t metadata);
   void remove_poll_fd(int fd);
+  void request_command(const std::vector<std::string> &args,
+                       Process::Command command);
   void remove_client_session(int fd);
   static void set_sighup_handler();
 

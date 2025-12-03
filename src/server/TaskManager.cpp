@@ -8,7 +8,7 @@
 
 static void fsm_run_task(Process &process, const process_config_t &config);
 static void fsm_transit_state(Process &process, const process_config_t &config);
-static void fsm_waiting_task(Process &process, const process_config_t &config);
+static void fsm_waiting_task(void);
 static void fsm_starting_task(Process &process, const process_config_t &config);
 static void fsm_running_task(Process &process);
 static void fsm_exiting_task(Process &process, const process_config_t &config);
@@ -52,7 +52,7 @@ void TaskManager::fsm(Process &process) {
 static void fsm_run_task(Process &process, const process_config_t &config) {
   switch (process.get_state()) {
   case Process::State::Waiting:
-    fsm_waiting_task(process, config);
+    fsm_waiting_task();
     break;
   case Process::State::Starting:
     fsm_starting_task(process, config);
@@ -125,6 +125,8 @@ static void fsm_transit_state(Process &process,
     next_state = Process::State::Exiting;
     status = process.get_status();
     if (!status.running) {
+      std::cout << "[TaskManager] " << config.name << ":"
+                << " (Exiting)>(Stopped)" << std::endl;
       next_state = Process::State::Stopped;
     }
     break;
@@ -150,11 +152,7 @@ static void fsm_transit_state(Process &process,
   process.set_state(next_state);
 }
 
-static void fsm_waiting_task(Process &process, const process_config_t &config) {
-  if (config.autostart) {
-    process.start();
-  }
-}
+static void fsm_waiting_task(void) {}
 
 static void fsm_starting_task(Process &process,
                               const process_config_t &config) {
@@ -181,15 +179,23 @@ static void fsm_running_task(Process &process) { process.update_status(); }
 
 static void fsm_exiting_task(Process &process, const process_config_t &config) {
   process.update_status();
-  if (process.get_stoptime() >= config.stoptime &&
-      process.get_status().running) {
-    process.kill();
-    process.update_status();
+  if (process.get_state() != process.get_previous_state()) {
+    process.stop(config.stopsignal);
+    return;
+  } else if (process.get_stoptime() >= config.stoptime &&
+             process.get_status().running) {
+    if (!process.get_status().killed) {
+      process.kill();
+    }
   }
 }
 
 static void fsm_stopped_task(Process &process) {
-  if (process.get_pending_command() == Process::Command::Stop) {
+  if (process.get_pending_command() == Process::Command::Restart) {
+    return;
+  }
+  if (process.get_previous_state() != Process::State::Stopped ||
+      process.get_pending_command() == Process::Command::Stop) {
     process.set_pending_command(Process::Command::None);
   }
 }

@@ -9,7 +9,6 @@
 #include <stdexcept>
 #include <sys/socket.h>
 #include <sys/wait.h>
-#include <unistd.h>
 #include <unordered_map>
 
 static void sighup_handler(int);
@@ -19,7 +18,8 @@ volatile sig_atomic_t sighup_received_g = 0;
 Taskmaster::Taskmaster(const ConfigParser &config)
     : _config(config),
       _command_manager(get_commands_callback()),
-      _server_socket(SOCKET_PATH_NAME) {
+      _server_socket(SOCKET_PATH_NAME),
+      _running(true) {
   std::vector<process_config_s> program_configs = config.parse();
 
   add_poll_fd({_server_socket.get_fd(), POLLIN, 0}, {FdType::Server});
@@ -34,7 +34,7 @@ void Taskmaster::loop() {
   if (_server_socket.listen(BACKLOG) == -1) {
     return;
   }
-  while (true) {
+  while (_running) {
     result = poll(_poll_fds.data(), _poll_fds.size(), -1);
     if (result == -1) {
       if (errno != EINTR) {
@@ -94,7 +94,6 @@ void Taskmaster::handle_poll_fds() {
 void Taskmaster::handle_client_command(const pollfd &poll_fd) {
   const auto it = get_client_session_from_fd(poll_fd.fd);
   std::string cmd_line;
-  std::string cmd;
 
   if (it == _client_sessions.end()) {
     throw std::runtime_error("handle_client_command(): invalid fd");
@@ -187,23 +186,59 @@ void Taskmaster::set_sighup_handler() {
   }
 }
 
-void Taskmaster::status(const std::vector<std::string> &) {}
+void Taskmaster::status(const std::vector<std::string> &) {
+  std::ostringstream oss;
 
-void Taskmaster::start(const std::vector<std::string> &args) { (void)args; }
+  for (auto const &[process_name, processes] : _process_pool) {
+    for (size_t i = 0; i < processes.size(); i++) {
+      oss << processes[i] << '[' << i << "] state: " << processes[i].get_state()
+          << std::endl;
+    }
+  }
+  _current_client->send_response(oss.str());
+}
 
-void Taskmaster::stop(const std::vector<std::string> &args) { (void)args; }
+void Taskmaster::start(const std::vector<std::string> &args) {
 
-void Taskmaster::restart(const std::vector<std::string> &args) { (void)args; }
+  request_command(args, Process::Command::Start);
+}
+
+void Taskmaster::stop(const std::vector<std::string> &args) {
+  request_command(args, Process::Command::Stop);
+}
+
+void Taskmaster::restart(const std::vector<std::string> &args) {
+  request_command(args, Process::Command::Restart);
+}
 
 void Taskmaster::reload(const std::vector<std::string> &) {
   sighup_received_g = 1;
   _current_client->set_reload_request(true);
 }
 
-void Taskmaster::quit(const std::vector<std::string> &) {}
+void Taskmaster::quit(const std::vector<std::string> &) {
+  _running = false;
+  _current_client->send_response("Quitting taskmaster...\n");
+}
 
 void Taskmaster::help(const std::vector<std::string> &) {
   // No server-side implementation
+}
+
+void Taskmaster::request_command(const std::vector<std::string> &args,
+                                 Process::Command command) {
+  for (std::string process_name : args) {
+    std::lock_guard lock(_process_pool_mutex);
+    auto process_pool_item = _process_pool.find(process_name);
+    if (process_pool_item == _process_pool.end()) {
+      // TODO the process was not found
+      continue;
+    }
+    for (Process &process : process_pool_item->second) {
+      process.set_pending_command(command);
+    }
+  }
+  _current_client->send_response("Command issued successfully\n");
 }
 
 std::vector<ClientSession>::iterator
