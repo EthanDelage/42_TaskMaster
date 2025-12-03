@@ -286,7 +286,6 @@ void Process::forward_output(int read_fd, int output_fd) {
   }
   Socket::write(output_fd, buffer, ret);
   for (auto client : _attached_client) {
-    std::cout << client << std::endl;
     Socket::write(client, buffer, ret);
   }
 }
