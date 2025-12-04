@@ -12,7 +12,7 @@
 
 class TaskManager {
 public:
-  TaskManager(ProcessPool &process_pool, PollFds &poll_fds);
+  explicit TaskManager(ProcessPool &process_pool, PollFds &poll_fds);
   ~TaskManager();
 
   void start();
