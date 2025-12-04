@@ -3,6 +3,10 @@
 #include <memory>
 #include <mutex>
 
+#ifdef DEBUG
+#define LOG_TO_STDOUT
+#endif
+
 class Logger {
 public:
   enum class Level { Debug, Info, Warning, Error };

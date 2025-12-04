@@ -1,3 +1,4 @@
+#include "common/Logger.hpp"
 #include "server/ConfigParser.hpp"
 #include "server/Taskmaster.hpp"
 #include <csignal>
@@ -11,6 +12,7 @@ int main(int argc, char **argv) {
     std::cerr << "usage: " << argv[0] << " <config_file>" << std::endl;
     return 0;
   }
+  Logger::init("./server.log");
   try {
     ConfigParser config(argv[1]);
     Taskmaster taskmaster(config);

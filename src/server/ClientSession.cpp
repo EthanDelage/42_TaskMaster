@@ -1,6 +1,7 @@
 #include "server/ClientSession.hpp"
 
 #include <common/Logger.hpp>
+#include <cstring>
 #include <stdexcept>
 #include <unistd.h>
 

@@ -1,6 +1,9 @@
 #include "common/Logger.hpp"
 
+#include "common/socket/Socket.hpp"
+
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <sys/fcntl.h>
@@ -51,9 +54,17 @@ void Logger::log(Level level, const std::string &message) const {
               << '[' << level << "] "
               << "[pid=" << getpid() << "] " << message << std::endl;
 
-  if (write(_fd, log_line_ss.str().c_str(), log_line_ss.str().size()) == -1) {
+  if (Socket::write(_fd, log_line_ss.str()) == -1) {
     throw std::runtime_error("Logger::log(): Failed to write to file");
   }
+  if (level == Level::Error) {
+    std::cerr << log_line_ss.str();
+  }
+#ifdef LOG_TO_STDOUT
+  else {
+    std::cout << log_line_ss.str();
+  }
+#endif
 }
 
 void Logger::debug(const std::string &message) const {
