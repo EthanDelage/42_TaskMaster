@@ -4,6 +4,7 @@
 #include "server/Process.hpp"
 #include "server/TaskManager.hpp"
 
+#include <common/Logger.hpp>
 #include <csignal>
 #include <iostream>
 #include <memory>
@@ -124,10 +125,8 @@ void Taskmaster::handle_client_command(const pollfd &poll_fd) {
 void Taskmaster::handle_connection() {
   int client_fd = _server_socket.accept_client();
   if (client_fd == -1) {
-    // TODO: log handle_connection() failed
     return;
   }
-  // TODO: add log
   _poll_fds.add_poll_fd({client_fd, POLLIN, 0}, {PollFds::FdType::Client});
   _client_sessions.emplace_back(client_fd);
 }
@@ -176,7 +175,8 @@ void Taskmaster::reload_config() {
 }
 
 void Taskmaster::disconnect_client(int fd) {
-  // TODO: add log
+  Logger::get_instance().info("Client fd= " + std::to_string(fd) +
+                              "disconnected");
   remove_client_session(fd);
   _poll_fds.remove_poll_fd(fd);
 }
@@ -239,9 +239,10 @@ void Taskmaster::attach(const std::vector<std::string> &args) {
   std::lock_guard<std::mutex> lock(_process_pool.get_mutex());
   auto process_group = _process_pool.find(args[1]);
   if (process_group == _process_pool.end()) {
-    // TODO: add log
+    Logger::get_instance().warn(
+        "Client fd=" + std::to_string(_current_client->get_fd()) +
+        " no such process named `" + args[1] + "`");
     _current_client->send_response("No such process named `" + args[1] + "`\n");
-    std::cout << "process group not found" << std::endl;
     return;
   }
   for (auto &process : process_group->second) {
@@ -253,7 +254,9 @@ void Taskmaster::detach(const std::vector<std::string> &args) {
   std::lock_guard<std::mutex> lock(_process_pool.get_mutex());
   auto process_group = _process_pool.find(args[1]);
   if (process_group == _process_pool.end()) {
-    // TODO: add log
+    Logger::get_instance().warn(
+        "Client fd=" + std::to_string(_current_client->get_fd()) +
+        " no such process named `" + args[1] + "`");
     _current_client->send_response("No such process named `" + args[1] + "`\n");
     return;
   }
@@ -265,16 +268,18 @@ void Taskmaster::detach(const std::vector<std::string> &args) {
 
 void Taskmaster::request_command(const std::vector<std::string> &args,
                                  Process::Command command) {
-  for (std::string process_name : args) {
-    std::lock_guard lock(_process_pool.get_mutex());
-    auto process_pool_item = _process_pool.find(process_name);
-    if (process_pool_item == _process_pool.end()) {
-      // TODO the process was not found
-      continue;
-    }
-    for (Process &process : process_pool_item->second) {
-      process.set_pending_command(command);
-    }
+  std::lock_guard lock(_process_pool.get_mutex());
+  auto process_pool_item = _process_pool.find(args[1]);
+  if (process_pool_item == _process_pool.end()) {
+    Logger::get_instance().warn(
+        "Client fd=" + std::to_string(_current_client->get_fd()) +
+        " no such process named `" + args[1] + "`");
+    _current_client->send_response("Process named `" + args[1] +
+                                   "` not exist\n");
+    return;
+  }
+  for (Process &process : process_pool_item->second) {
+    process.set_pending_command(command);
   }
   _current_client->send_response("Command issued successfully\n");
 }

@@ -1,5 +1,6 @@
 #include "server/TaskManager.hpp"
 
+#include "common/Logger.hpp"
 #include "common/socket/Socket.hpp"
 #include "server/ConfigParser.hpp"
 #include "server/Process.hpp"
@@ -20,7 +21,8 @@ TaskManager::~TaskManager() {
   if (_worker_thread.joinable()) {
     _worker_thread.join();
   } else {
-    std::cerr << "Worker thread is not joinable which is a bit weird\n";
+    Logger::get_instance().error(
+        "Worker thread is not joinable which is a bit weird");
   }
 }
 

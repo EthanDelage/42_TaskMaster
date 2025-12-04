@@ -41,8 +41,6 @@ private:
   static void print_header();
   void receive_response() const;
   size_t get_usage_max_len() const;
-  static bool is_valid_args(const client_command_t &command,
-                            const std::vector<std::string> &args);
   std::unordered_map<std::string, cmd_callback_t> get_commands_callback();
 };
 

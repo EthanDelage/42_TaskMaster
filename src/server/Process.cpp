@@ -1,5 +1,6 @@
 #include "server/Process.hpp"
 
+#include "common/Logger.hpp"
 #include "common/socket/Socket.hpp"
 #include "server/ConfigParser.hpp"
 #include <chrono>
@@ -167,9 +168,13 @@ void Process::read_stderr() {
 void Process::attach_client(int fd) {
   if (std::find(_attached_client.begin(), _attached_client.end(), fd) !=
       _attached_client.end()) {
-    // TODO: add log
+    Logger::get_instance().warn("Client fd=" + std::to_string(fd) +
+                                " already attached to `" +
+                                _process_config->name + '`');
   } else {
     _attached_client.push_back(fd);
+    Logger::get_instance().info("Client fd=" + std::to_string(fd) +
+                                " attached to `" + _process_config->name + '`');
   }
 }
 
@@ -177,9 +182,13 @@ void Process::detach_client(int fd) {
   auto client_it =
       std::find(_attached_client.begin(), _attached_client.end(), fd);
   if (client_it == _attached_client.end()) {
-    // TODO: add log
+    Logger::get_instance().warn("Client fd=" + std::to_string(fd) +
+                                " not attached to `" + _process_config->name +
+                                '`');
   } else {
     _attached_client.erase(client_it);
+    Logger::get_instance().info("Client fd=" + std::to_string(fd) +
+                                " detached to `" + _process_config->name + '`');
   }
 }
 
