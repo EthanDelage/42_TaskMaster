@@ -8,6 +8,8 @@
 #include <atomic>
 #include <thread>
 
+#define WAKE_UP_STRING "x"
+
 class TaskManager {
 public:
   explicit TaskManager(ProcessPool &process_pool, PollFds &poll_fds,

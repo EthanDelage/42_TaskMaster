@@ -26,7 +26,6 @@ public:
   void add_poll_fd(pollfd fd, metadata_t metadata);
   void remove_poll_fd(int fd);
 
-  std::mutex &get_mutex();
   snapshot_t get_snapshot();
 
 private:

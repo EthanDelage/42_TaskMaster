@@ -118,7 +118,6 @@ void Taskmaster::handle_connection(PollFds::snapshot_t poll_fds_snapshot) {
       return;
     }
     // TODO: add log
-    std::lock_guard lock(_poll_fds.get_mutex());
     _poll_fds.add_poll_fd({client_fd, POLLIN, 0}, {PollFds::FdType::Client});
     _client_sessions.emplace_back(client_fd);
   }
@@ -170,7 +169,6 @@ void Taskmaster::reload_config() {
 void Taskmaster::disconnect_client(int fd) {
   // TODO: add log
   remove_client_session(fd);
-  std::lock_guard lock(_poll_fds.get_mutex());
   _poll_fds.remove_poll_fd(fd);
 }
 
