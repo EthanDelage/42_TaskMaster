@@ -230,7 +230,7 @@ void Taskmaster::attach(const std::vector<std::string> &args) {
   auto process_group = _process_pool.find(args[1]);
   if (process_group == _process_pool.end()) {
     // TODO: add log
-    // TODO: send response to the client
+    _current_client->send_response("No such process named `" + args[1] + "`\n");
     std::cout << "process group not found" << std::endl;
     return;
   }
@@ -244,7 +244,7 @@ void Taskmaster::detach(const std::vector<std::string> &args) {
   auto process_group = _process_pool.find(args[1]);
   if (process_group == _process_pool.end()) {
     // TODO: add log
-    // TODO: send response to the client
+    _current_client->send_response("No such process named `" + args[1] + "`\n");
     return;
   }
   for (auto &process : process_group->second) {
