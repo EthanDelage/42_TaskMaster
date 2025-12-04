@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
     Taskmaster taskmaster(config);
     taskmaster.loop();
   } catch (const std::exception &e) {
-    std::cerr << e.what() << std::endl;
+    Logger::get_instance().error(e.what());
   }
   return 0;
 }

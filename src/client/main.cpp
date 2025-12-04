@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     TaskmasterCtl ctl = TaskmasterCtl("$> ");
     ctl.loop();
   } catch (const std::runtime_error &e) {
-    std::cerr << e.what() << std::endl;
+    Logger::get_instance().error(e.what());
   }
   return 0;
 }
