@@ -1,24 +1,40 @@
 #ifndef TASKMANAGER_HPP
 #define TASKMANAGER_HPP
 
+#include "PollFds.hpp"
 #include "server/Process.hpp"
 #include "server/ProcessPool.hpp"
 
 #include <atomic>
 #include <thread>
 
+#define WAKE_UP_STRING "x"
+
 class TaskManager {
 public:
-  explicit TaskManager(ProcessPool &process_pool);
+  explicit TaskManager(ProcessPool &process_pool, PollFds &poll_fds,
+                       int wake_up_fd);
   ~TaskManager();
 
 private:
   ProcessPool &_process_pool;
   std::thread _worker_thread;
   std::atomic<bool> _stop_token;
+  PollFds &_poll_fds;
+  int _wake_up_fd;
 
   void work();
   void fsm(Process &process);
+
+  void fsm_run_task(Process &process, const process_config_t &config);
+  static void fsm_transit_state(Process &process,
+                                const process_config_t &config);
+  static void fsm_waiting_task();
+  void fsm_starting_task(Process &process, const process_config_t &config);
+  static void fsm_running_task(Process &process);
+  static void fsm_exiting_task(Process &process,
+                               const process_config_t &config);
+  void fsm_stopped_task(Process &process);
 };
 
 #endif // TASKMANAGER_HPP

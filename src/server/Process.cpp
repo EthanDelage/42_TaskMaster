@@ -1,5 +1,6 @@
 #include "server/Process.hpp"
 
+#include "common/socket/Socket.hpp"
 #include "server/ConfigParser.hpp"
 #include <chrono>
 #include <cstdlib>
@@ -11,6 +12,7 @@ extern "C" {
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <unistd.h>
 }
 
 static void redirect_output(int pipe_fd, int output_fd);
@@ -23,13 +25,11 @@ Process::Process(std::shared_ptr<const process_config_t> process_config)
       _num_retries(0),
       _state(State::Waiting),
       _previous_state(State::Waiting),
-      _pending_command(Command::None) {
-  if (pipe(_stdout_pipe) == -1) {
-    throw std::runtime_error("Error: Process() failed to create stdout pipe");
-  }
-  if (pipe(_stderr_pipe) == -1) {
-    throw std::runtime_error("Error: Process() failed to create stderr pipe");
-  }
+      _pending_command(Command::None),
+      _stdout_pipe{-1, -1},
+      _stderr_pipe{-1, -1},
+      _stdout_fd(-1),
+      _stderr_fd(-1) {
   std::string stdout_path = _process_config->stdout;
   _stdout_fd = stdout_path.empty() ? open("/dev/null", O_WRONLY)
                                    : open(stdout_path.c_str(),
@@ -49,14 +49,18 @@ Process::Process(std::shared_ptr<const process_config_t> process_config)
 
 Process::~Process() {
   close(_stdout_pipe[PIPE_READ]);
-  close(_stdout_pipe[PIPE_WRITE]);
   close(_stderr_pipe[PIPE_READ]);
-  close(_stderr_pipe[PIPE_WRITE]);
   close(_stdout_fd);
   close(_stderr_fd);
 }
 
 int Process::start() {
+  if (pipe(_stdout_pipe) == -1) {
+    throw std::runtime_error("Error: Process() failed to create stdout pipe");
+  }
+  if (pipe(_stderr_pipe) == -1) {
+    throw std::runtime_error("Error: Process() failed to create stderr pipe");
+  }
   _pid = fork();
   if (_pid == -1) {
     perror("fork");
@@ -64,12 +68,20 @@ int Process::start() {
   }
   if (_pid > 0) {
     // parent process
+    close(_stdout_pipe[PIPE_WRITE]);
+    _stdout_pipe[PIPE_WRITE] = -1;
+    close(_stderr_pipe[PIPE_WRITE]);
+    _stderr_pipe[PIPE_WRITE] = -1;
     _start_timestamp = std::chrono::steady_clock::now();
     _status.killed = false;
     std::cout << "[Taskmaster] Started " << _process_config->name << "(" << _pid
               << ")" << std::endl;
     return 0;
   }
+  close(_stdout_pipe[PIPE_READ]);
+  close(_stderr_pipe[PIPE_READ]);
+  close(_stdout_fd);
+  close(_stderr_fd);
   setup();
   execve(_process_config->cmd_path.c_str(), _process_config->cmd->we_wordv,
          environ);
@@ -139,6 +151,40 @@ bool Process::check_autorestart(void) {
     return true;
   }
   return false;
+}
+
+void Process::read_stdout() {
+  forward_output(_stdout_pipe[PIPE_READ], _stdout_fd);
+}
+
+void Process::read_stderr() {
+  forward_output(_stderr_pipe[PIPE_READ], _stderr_fd);
+}
+
+void Process::attach_client(int fd) {
+  if (std::find(_attached_client.begin(), _attached_client.end(), fd) !=
+      _attached_client.end()) {
+    // TODO: add log
+  } else {
+    _attached_client.push_back(fd);
+  }
+}
+
+void Process::detach_client(int fd) {
+  auto client_it =
+      std::find(_attached_client.begin(), _attached_client.end(), fd);
+  if (client_it == _attached_client.end()) {
+    // TODO: add log
+  } else {
+    _attached_client.erase(client_it);
+  }
+}
+
+void Process::close_outputs() {
+  close(_stdout_pipe[PIPE_READ]);
+  _stdout_pipe[PIPE_READ] = -1;
+  close(_stderr_pipe[PIPE_READ]);
+  _stderr_pipe[PIPE_READ] = -1;
 }
 
 unsigned long Process::get_runtime(void) {
@@ -226,6 +272,31 @@ void Process::setup_umask() const { umask(_process_config->umask); }
 void Process::setup_outputs() {
   redirect_output(_stdout_pipe[PIPE_WRITE], STDOUT_FILENO);
   redirect_output(_stderr_pipe[PIPE_WRITE], STDERR_FILENO);
+}
+
+/**
+ * @brief Read data from a pipe and forward it to the main output descriptor
+ *        as well as all attached client sockets.
+ *
+ * @param read_fd   File descriptor from which to read (pipe read end).
+ * @param output_fd File descriptor to forward the data to.
+ *
+ * @note If the read operation fails, the function prints an error using
+ * perror() and returns without attempting to forward any data.
+ */
+void Process::forward_output(int read_fd, int output_fd) {
+  char buffer[SOCKET_BUFFER_SIZE];
+  ssize_t ret;
+
+  ret = Socket::read(read_fd, buffer, SOCKET_BUFFER_SIZE);
+  if (ret == -1) {
+    perror("read");
+    return;
+  }
+  Socket::write(output_fd, buffer, ret);
+  for (auto client : _attached_client) {
+    Socket::write(client, buffer, ret);
+  }
 }
 
 static void redirect_output(int pipe_fd, int output_fd) {

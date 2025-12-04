@@ -41,6 +41,12 @@ public:
   int update_status(void);
   bool check_autorestart(void);
 
+  void read_stdout();
+  void read_stderr();
+  void attach_client(int fd);
+  void detach_client(int fd);
+  void close_outputs();
+
   const process_config_t &get_process_config() const;
   pid_t get_pid() const;
   std::chrono::steady_clock::time_point get_start_timestamp() const;
@@ -65,6 +71,7 @@ private:
   void setup_workingdir() const;
   void setup_umask() const;
   void setup_outputs();
+  void forward_output(int read_fd, int output_fd);
 
   std::shared_ptr<const process_config_t> _process_config;
   pid_t _pid;

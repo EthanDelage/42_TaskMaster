@@ -1,6 +1,7 @@
 #ifndef TASKMASTER_HPP
 #define TASKMASTER_HPP
 
+#include "PollFds.hpp"
 #include "UnixSocketServer.hpp"
 #include "server/ClientSession.hpp"
 #include "server/Process.hpp"
@@ -9,17 +10,6 @@
 #include <common/CommandManager.hpp>
 #include <sys/poll.h>
 #include <unordered_map>
-
-enum class FdType {
-  Server,
-  Client,
-  Process,
-};
-
-typedef struct poll_fd_metadata_s poll_fd_metadata_t;
-struct poll_fd_metadata_s {
-  FdType type;
-};
 
 class Taskmaster {
 public:
@@ -30,21 +20,20 @@ private:
   ConfigParser _config;
   CommandManager _command_manager;
   ProcessPool _process_pool;
-  std::vector<pollfd> _poll_fds;
-  std::vector<poll_fd_metadata_t> _poll_fds_metadata;
+  PollFds _poll_fds;
+  int _wake_up_pipe[2];
   std::vector<ClientSession> _client_sessions;
   ClientSession *_current_client{};
   UnixSocketServer _server_socket;
   bool _running;
 
-  void handle_poll_fds();
+  void handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot);
   void handle_client_command(const pollfd &poll_fd);
-  void read_process_output(int fd);
-  void reload_config();
   void handle_connection();
+  void handle_wake_up(int fd);
+  void handle_process_output(int fd);
+  void reload_config();
   void disconnect_client(int fd);
-  void add_poll_fd(pollfd fd, poll_fd_metadata_t metadata);
-  void remove_poll_fd(int fd);
   void request_command(const std::vector<std::string> &args,
                        Process::Command command);
   void remove_client_session(int fd);
@@ -58,6 +47,8 @@ private:
   void reload(const std::vector<std::string> &args);
   void quit(const std::vector<std::string> &args);
   void help(const std::vector<std::string> &args);
+  void attach(const std::vector<std::string> &args);
+  void detach(const std::vector<std::string> &args);
 
   // Getters
   std::vector<ClientSession>::iterator get_client_session_from_fd(int fd);

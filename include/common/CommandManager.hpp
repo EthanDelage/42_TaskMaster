@@ -12,6 +12,8 @@
 #define CMD_QUIT_STR "quit"
 #define CMD_EXIT_STR "exit"
 #define CMD_HELP_STR "help"
+#define CMD_ATTACH_STR "attach"
+#define CMD_DETACH_STR "detach"
 #define CMD_UNKNOWN_STR "unknown"
 
 typedef std::function<void(const std::vector<std::string> &)> cmd_callback_t;

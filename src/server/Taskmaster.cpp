@@ -1,5 +1,6 @@
 #include "server/Taskmaster.hpp"
 #include "server/ConfigParser.hpp"
+#include "server/PollFds.hpp"
 #include "server/Process.hpp"
 #include "server/TaskManager.hpp"
 
@@ -9,6 +10,7 @@
 #include <stdexcept>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <unistd.h>
 #include <unordered_map>
 
 static bool compare_config(const process_config_t &left,
@@ -23,26 +25,33 @@ Taskmaster::Taskmaster(const ConfigParser &config)
       _process_pool(config.parse()),
       _server_socket(SOCKET_PATH_NAME),
       _running(true) {
-  add_poll_fd({_server_socket.get_fd(), POLLIN, 0}, {FdType::Server});
+  if (pipe(_wake_up_pipe) == -1) {
+    throw std::runtime_error(
+        "Error: Taskmaster() failed to create wake_up pipe");
+  }
+  _poll_fds.add_poll_fd({_server_socket.get_fd(), POLLIN, 0},
+                        {PollFds::FdType::Server});
+  _poll_fds.add_poll_fd({_wake_up_pipe[PIPE_READ], POLLIN, 0},
+                        {PollFds::FdType::WakeUp});
 }
 
 void Taskmaster::loop() {
-  int result;
-
-  TaskManager task_manager(_process_pool);
+  TaskManager task_manager(_process_pool, _poll_fds, _wake_up_pipe[PIPE_WRITE]);
   set_sighup_handler();
   if (_server_socket.listen(BACKLOG) == -1) {
     return;
   }
   while (_running) {
-    result = poll(_poll_fds.data(), _poll_fds.size(), -1);
+    PollFds::snapshot_t poll_fds_snapshot = _poll_fds.get_snapshot();
+    int result = poll(poll_fds_snapshot.poll_fds.data(),
+                      poll_fds_snapshot.poll_fds.size(), -1);
     if (result == -1) {
       if (errno != EINTR) {
         throw std::runtime_error("poll()");
       }
       continue;
     }
-    handle_poll_fds();
+    handle_poll_fds(poll_fds_snapshot);
     if (sighup_received_g) {
       reload_config();
       for (auto &client_session : _client_sessions) {
@@ -57,20 +66,32 @@ void Taskmaster::loop() {
   }
 }
 
-void Taskmaster::handle_poll_fds() {
-  for (size_t index = 1; index < _poll_fds.size(); index++) {
-    const pollfd *poll_fd = &_poll_fds[index];
-    const poll_fd_metadata_t *fd_metadata = &_poll_fds_metadata[index];
+void Taskmaster::handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot) {
+  for (size_t index = 0; index < poll_fds_snapshot.poll_fds.size(); index++) {
+    const pollfd poll_fd = poll_fds_snapshot.poll_fds[index];
+    const auto [fd_type] = poll_fds_snapshot.metadata[index];
 
-    if (poll_fd->revents != 0) {
-      if (fd_metadata->type == FdType::Client) {
-        handle_client_command(*poll_fd);
-      } else if (fd_metadata->type == FdType::Process) {
-        read_process_output(poll_fd->fd);
+    if (poll_fd.revents != 0) {
+      if ((poll_fd.revents & POLLNVAL) != 0) {
+        _poll_fds.remove_poll_fd(poll_fd.fd);
+        continue;
+      }
+      switch (fd_type) {
+      case PollFds::FdType::Process:
+        handle_process_output(poll_fd.fd);
+        break;
+      case PollFds::FdType::Client:
+        handle_client_command(poll_fd);
+        break;
+      case PollFds::FdType::WakeUp:
+        handle_wake_up(poll_fd.fd);
+        break;
+      case PollFds::FdType::Server:
+        handle_connection();
+        break;
       }
     }
   }
-  handle_connection();
 }
 
 void Taskmaster::handle_client_command(const pollfd &poll_fd) {
@@ -95,24 +116,33 @@ void Taskmaster::handle_client_command(const pollfd &poll_fd) {
   }
 }
 
-void Taskmaster::read_process_output(int fd) {
-  (void)fd; // TODO: remove this
-  for (auto &[process_name, process_group] : _process_pool) {
-    for (auto &process : process_group) {
-      (void)process; // TODO: remove this
-      if (false) {
-        // TODO: change condition to (fd == process.get_stdout_pipe()[read])
-        // TODO: process.read_stdout()
-        return;
-      } else if (false) {
-        // TODO: change condition to (fd == process.get_stderr_pipe()[read])
-        // TODO: process.read_stderr()
-        return;
+void Taskmaster::handle_connection() {
+  int client_fd = _server_socket.accept_client();
+  if (client_fd == -1) {
+    // TODO: log handle_connection() failed
+    return;
+  }
+  // TODO: add log
+  _poll_fds.add_poll_fd({client_fd, POLLIN, 0}, {PollFds::FdType::Client});
+  _client_sessions.emplace_back(client_fd);
+}
+
+void Taskmaster::handle_wake_up(int fd) {
+  char buffer[SOCKET_BUFFER_SIZE];
+  Socket::read(fd, buffer, SOCKET_BUFFER_SIZE);
+}
+
+void Taskmaster::handle_process_output(int fd) {
+  for (auto &[name, processes] : _process_pool) {
+    for (auto &process : processes) {
+      if (fd == process.get_stdout_pipe()[PIPE_READ]) {
+        process.read_stdout();
+      } else if (fd == process.get_stderr_pipe()[PIPE_READ]) {
+        process.read_stderr();
       }
     }
   }
 }
-
 void Taskmaster::reload_config() {
   ProcessPool new_pool(_config.parse());
 
@@ -140,40 +170,10 @@ void Taskmaster::reload_config() {
   _process_pool = std::move(new_pool);
 }
 
-void Taskmaster::handle_connection() {
-  if (_poll_fds[0].revents & POLLIN) {
-    int client_fd = _server_socket.accept_client();
-    if (client_fd == -1) {
-      // TODO: log handle_connection() failed
-      return;
-    }
-    // TODO: add log
-    add_poll_fd({client_fd, POLLIN, 0}, {FdType::Client});
-    _client_sessions.emplace_back(client_fd);
-  }
-}
-
 void Taskmaster::disconnect_client(int fd) {
   // TODO: add log
   remove_client_session(fd);
-  remove_poll_fd(fd);
-}
-
-void Taskmaster::add_poll_fd(pollfd fd, poll_fd_metadata_t metadata) {
-  _poll_fds.emplace_back(fd);
-  _poll_fds_metadata.emplace_back(metadata);
-}
-
-void Taskmaster::remove_poll_fd(const int fd) {
-  long index;
-  auto it = std::find_if(_poll_fds.begin(), _poll_fds.end(),
-                         [fd](pollfd poll_fd) { return fd == poll_fd.fd; });
-  if (it == _poll_fds.end()) {
-    throw std::invalid_argument("remove_poll_fd(): invalid fd");
-  }
-  index = std::distance(_poll_fds.begin(), it);
-  _poll_fds.erase(it);
-  _poll_fds_metadata.erase(_poll_fds_metadata.begin() + index);
+  _poll_fds.remove_poll_fd(fd);
 }
 
 void Taskmaster::remove_client_session(int fd) {
@@ -229,6 +229,34 @@ void Taskmaster::help(const std::vector<std::string> &) {
   // No server-side implementation
 }
 
+void Taskmaster::attach(const std::vector<std::string> &args) {
+  std::lock_guard<std::mutex> lock(_process_pool.get_mutex());
+  auto process_group = _process_pool.find(args[1]);
+  if (process_group == _process_pool.end()) {
+    // TODO: add log
+    _current_client->send_response("No such process named `" + args[1] + "`\n");
+    std::cout << "process group not found" << std::endl;
+    return;
+  }
+  for (auto &process : process_group->second) {
+    process.attach_client(_current_client->get_fd());
+  }
+}
+
+void Taskmaster::detach(const std::vector<std::string> &args) {
+  std::lock_guard<std::mutex> lock(_process_pool.get_mutex());
+  auto process_group = _process_pool.find(args[1]);
+  if (process_group == _process_pool.end()) {
+    // TODO: add log
+    _current_client->send_response("No such process named `" + args[1] + "`\n");
+    return;
+  }
+  for (auto &process : process_group->second) {
+    process.detach_client(_current_client->get_fd());
+  }
+  _current_client->send_response("Successfully detached\n");
+}
+
 void Taskmaster::request_command(const std::vector<std::string> &args,
                                  Process::Command command) {
   for (std::string process_name : args) {
@@ -269,8 +297,11 @@ Taskmaster::get_commands_callback() {
        [this](const std::vector<std::string> &args) { quit(args); }},
       {CMD_EXIT_STR,
        [this](const std::vector<std::string> &args) { quit(args); }},
-      {CMD_HELP_STR,
-       [this](const std::vector<std::string> &args) { help(args); }},
+      {CMD_HELP_STR, nullptr},
+      {CMD_ATTACH_STR,
+       [this](const std::vector<std::string> &args) { attach(args); }},
+      {CMD_DETACH_STR,
+       [this](const std::vector<std::string> &args) { detach(args); }},
   };
 }
 

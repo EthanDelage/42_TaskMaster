@@ -8,6 +8,7 @@ add_executable(server
         ClientSession.cpp
         ProcessGroup.cpp
         ProcessPool.cpp
+        PollFds.cpp
 )
 
 include(FetchContent)

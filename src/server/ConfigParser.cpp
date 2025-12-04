@@ -4,6 +4,7 @@
 
 #include <csignal>
 #include <filesystem>
+#include <unistd.h>
 #include <unordered_set>
 #include <yaml-cpp/yaml.h>
 

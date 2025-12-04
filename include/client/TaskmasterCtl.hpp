@@ -4,6 +4,7 @@
 #include "UnixSocketClient.hpp"
 
 #include <common/CommandManager.hpp>
+#include <csignal>
 #include <functional>
 #include <string>
 #include <vector>
@@ -28,8 +29,13 @@ private:
   std::string _prompt_string;
   bool _is_running;
   UnixSocketClient _socket;
+  struct sigaction _default_sigint_handler;
 
-  void send_command_and_print(const std::vector<std::string> &args) const;
+  void set_sigint_handler();
+  void reset_sigint_handler();
+  void send_command(const std::vector<std::string> &args) const;
+  void send_and_receive(const std::vector<std::string> &args) const;
+  void attach(const std::vector<std::string> &args);
   void quit(const std::vector<std::string> &);
   void print_usage(const std::vector<std::string> &) const;
   static void print_header();

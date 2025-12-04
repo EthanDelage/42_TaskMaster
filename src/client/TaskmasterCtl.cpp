@@ -5,6 +5,10 @@
 #include <iostream>
 #include <sstream>
 
+volatile sig_atomic_t sigint_received_g = 0;
+
+static void sigint_handler(int);
+
 TaskmasterCtl::TaskmasterCtl(std::string prompt_string)
     : _command_manager(get_commands_callback()),
       _prompt_string(std::move(prompt_string)),
@@ -31,23 +35,62 @@ void TaskmasterCtl::run_command(const std::string &command_line) {
   _command_manager.run_command(command_line);
 }
 
-void TaskmasterCtl::send_command_and_print(
-    const std::vector<std::string> &args) const {
+void TaskmasterCtl::set_sigint_handler() {
+  struct sigaction sa = {};
+  sa.sa_handler = sigint_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  if (sigaction(SIGINT, &sa, &_default_sigint_handler) == -1) {
+    perror("sigaction");
+    // TODO: replace perror by a log
+    exit(EXIT_FAILURE);
+  }
+}
+
+void TaskmasterCtl::reset_sigint_handler() {
+  if (sigaction(SIGHUP, &_default_sigint_handler, nullptr) == -1) {
+    perror("sigaction");
+    // TODO: replace perror by a log
+    exit(EXIT_FAILURE);
+  }
+}
+
+void TaskmasterCtl::send_command(const std::vector<std::string> &args) const {
   if (_socket.write(join(args, " ") + '\n') == -1) {
     throw std::runtime_error(std::string("send") + strerror(errno));
   }
   std::cout << "message sent" << std::endl;
+}
+
+void TaskmasterCtl::send_and_receive(
+    const std::vector<std::string> &args) const {
+  send_command(args);
   receive_response();
 }
 
+void TaskmasterCtl::attach(const std::vector<std::string> &args) {
+  send_command(args);
+  set_sigint_handler();
+  while (sigint_received_g == 0) {
+    receive_response();
+  }
+  std::cout << std::endl;
+  send_and_receive({CMD_DETACH_STR, args[1]});
+  reset_sigint_handler();
+  sigint_received_g = 0;
+}
+
 void TaskmasterCtl::quit(const std::vector<std::string> &args) {
-  send_command_and_print(args);
+  send_and_receive(args);
   _is_running = false;
 }
 
 void TaskmasterCtl::print_usage(const std::vector<std::string> &) const {
   std::cout << "Available commands:" << std::endl;
   for (const auto &[cmd_name, cmd] : _command_manager) {
+    if (cmd.callback == nullptr) {
+      continue;
+    }
     std::ostringstream left_part;
     left_part << cmd.name;
     for (const auto &arg : cmd.args) {
@@ -76,7 +119,7 @@ void TaskmasterCtl::receive_response() const {
   if (ret == -1) {
     return;
   }
-  std::cout << std::string(buffer, ret) << std::endl;
+  std::cout << std::string(buffer, ret);
 }
 
 size_t TaskmasterCtl::get_usage_max_len() const {
@@ -110,28 +153,34 @@ TaskmasterCtl::get_commands_callback() {
   return {
       {CMD_STATUS_STR,
        [this](const std::vector<std::string> &args) {
-         send_command_and_print(args);
+         send_and_receive(args);
        }},
       {CMD_START_STR,
        [this](const std::vector<std::string> &args) {
-         send_command_and_print(args);
+         send_and_receive(args);
        }},
       {CMD_STOP_STR,
        [this](const std::vector<std::string> &args) {
-         send_command_and_print(args);
+         send_and_receive(args);
        }},
       {CMD_RESTART_STR,
        [this](const std::vector<std::string> &args) {
-         send_command_and_print(args);
+         send_and_receive(args);
        }},
       {CMD_RELOAD_STR,
        [this](const std::vector<std::string> &args) {
-         send_command_and_print(args);
+         send_and_receive(args);
        }},
       {CMD_QUIT_STR,
        [this](const std::vector<std::string> &args) { quit(args); }},
       {CMD_EXIT_STR,
        [this](const std::vector<std::string> &args) { quit(args); }},
-      {CMD_HELP_STR, nullptr},
+      {CMD_HELP_STR,
+       [this](const std::vector<std::string> &args) { print_usage(args); }},
+      {CMD_ATTACH_STR,
+       [this](const std::vector<std::string> &args) { attach(args); }},
+      {CMD_DETACH_STR, nullptr},
   };
 }
+
+static void sigint_handler(int) { sigint_received_g = 1; }
