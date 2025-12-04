@@ -25,8 +25,7 @@ Taskmaster::Taskmaster(const ConfigParser &config)
       _process_pool(config.parse()),
       _server_socket(SOCKET_PATH_NAME),
       _task_manager(_process_pool, _poll_fds),
-      _running(true)
-{
+      _running(true) {
   if (pipe(_wake_up_pipe) == -1) {
     throw std::runtime_error(
         "Error: Taskmaster() failed to create wake_up pipe");
@@ -53,6 +52,9 @@ void Taskmaster::loop() {
         throw std::runtime_error("poll()");
       }
       continue;
+    }
+    if (!_task_manager.is_thread_alive()) {
+      return;
     }
     handle_poll_fds(poll_fds_snapshot);
     if (sighup_received_g) {

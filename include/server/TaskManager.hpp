@@ -17,6 +17,7 @@ public:
 
   void start();
   void stop();
+  bool is_thread_alive() const;
 
   void set_wake_up_fd(int wake_up_fd);
 

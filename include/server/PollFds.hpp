@@ -1,8 +1,8 @@
 #ifndef POLLFDS_HPP
 #define POLLFDS_HPP
+#include <mutex>
 #include <sys/poll.h>
 #include <vector>
-#include <mutex>
 
 class PollFds {
 public:
