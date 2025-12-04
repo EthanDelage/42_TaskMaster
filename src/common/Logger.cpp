@@ -39,7 +39,7 @@ Logger &Logger::get_instance() {
   return *_instance;
 }
 
-void Logger::log(Level level, const std::string &message) const {
+void Logger::log(Level level, const std::string &message) {
   std::stringstream log_line_ss;
 
   const auto now = std::chrono::system_clock::now();
@@ -54,6 +54,7 @@ void Logger::log(Level level, const std::string &message) const {
               << '[' << level << "] "
               << "[pid=" << getpid() << "] " << message << std::endl;
 
+  std::lock_guard lock(_mutex);
   if (Socket::write(_fd, log_line_ss.str()) == -1) {
     throw std::runtime_error("Logger::log(): Failed to write to file");
   }
@@ -67,21 +68,13 @@ void Logger::log(Level level, const std::string &message) const {
 #endif
 }
 
-void Logger::debug(const std::string &message) const {
-  log(Level::Debug, message);
-}
+void Logger::debug(const std::string &message) { log(Level::Debug, message); }
 
-void Logger::info(const std::string &message) const {
-  log(Level::Info, message);
-}
+void Logger::info(const std::string &message) { log(Level::Info, message); }
 
-void Logger::warn(const std::string &message) const {
-  log(Level::Warning, message);
-}
+void Logger::warn(const std::string &message) { log(Level::Warning, message); }
 
-void Logger::error(const std::string &message) const {
-  log(Level::Error, message);
-}
+void Logger::error(const std::string &message) { log(Level::Error, message); }
 
 std::ostream &operator<<(std::ostream &os, const Logger::Level &level) {
   switch (level) {

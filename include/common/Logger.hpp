@@ -18,11 +18,11 @@ public:
   static void init(const std::string &log_file_path);
   static Logger &get_instance();
 
-  void log(Level level, const std::string &message) const;
-  void debug(const std::string &message) const;
-  void info(const std::string &message) const;
-  void warn(const std::string &message) const;
-  void error(const std::string &message) const;
+  void log(Level level, const std::string &message);
+  void debug(const std::string &message);
+  void info(const std::string &message);
+  void warn(const std::string &message);
+  void error(const std::string &message);
 
 private:
   explicit Logger(const std::string &log_file_path);
@@ -30,6 +30,7 @@ private:
   static std::unique_ptr<Logger> _instance;
   static std::once_flag _init_flag;
   int _fd{};
+  std::mutex _mutex;
 };
 
 std::ostream &operator<<(std::ostream &os, const Logger::Level &level);
