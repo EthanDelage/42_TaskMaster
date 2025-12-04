@@ -261,16 +261,18 @@ void Taskmaster::detach(const std::vector<std::string> &args) {
 
 void Taskmaster::request_command(const std::vector<std::string> &args,
                                  Process::Command command) {
-  for (std::string process_name : args) {
-    std::lock_guard lock(_process_pool.get_mutex());
-    auto process_pool_item = _process_pool.find(process_name);
-    if (process_pool_item == _process_pool.end()) {
-      // TODO the process was not found
-      continue;
-    }
-    for (Process &process : process_pool_item->second) {
-      process.set_pending_command(command);
-    }
+  std::lock_guard lock(_process_pool.get_mutex());
+  auto process_pool_item = _process_pool.find(args[1]);
+  if (process_pool_item == _process_pool.end()) {
+    Logger::get_instance().warn(
+        "Client fd=" + std::to_string(_current_client->get_fd()) +
+        " no such process named `" + args[1] + "`");
+    _current_client->send_response("Process named `" + args[1] +
+                                   "` not exist\n");
+    return;
+  }
+  for (Process &process : process_pool_item->second) {
+    process.set_pending_command(command);
   }
   _current_client->send_response("Command issued successfully\n");
 }
