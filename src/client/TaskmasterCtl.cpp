@@ -42,16 +42,14 @@ void TaskmasterCtl::set_sigint_handler() {
   sigemptyset(&sa.sa_mask);
   sa.sa_flags = 0;
   if (sigaction(SIGINT, &sa, &_default_sigint_handler) == -1) {
-    perror("sigaction");
-    // TODO: replace perror by a log
+    Logger::get_instance().error(std::string("sigaction: ") + strerror(errno));
     exit(EXIT_FAILURE);
   }
 }
 
 void TaskmasterCtl::reset_sigint_handler() {
   if (sigaction(SIGHUP, &_default_sigint_handler, nullptr) == -1) {
-    perror("sigaction");
-    // TODO: replace perror by a log
+    Logger::get_instance().error(std::string("sigaction: ") + strerror(errno));
     exit(EXIT_FAILURE);
   }
 }

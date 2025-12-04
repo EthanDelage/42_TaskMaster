@@ -120,10 +120,8 @@ void Taskmaster::handle_client_command(const pollfd &poll_fd) {
 void Taskmaster::handle_connection() {
   int client_fd = _server_socket.accept_client();
   if (client_fd == -1) {
-    // TODO: log handle_connection() failed
     return;
   }
-  // TODO: add log
   _poll_fds.add_poll_fd({client_fd, POLLIN, 0}, {PollFds::FdType::Client});
   _client_sessions.emplace_back(client_fd);
 }
@@ -235,9 +233,10 @@ void Taskmaster::attach(const std::vector<std::string> &args) {
   std::lock_guard<std::mutex> lock(_process_pool.get_mutex());
   auto process_group = _process_pool.find(args[1]);
   if (process_group == _process_pool.end()) {
-    // TODO: add log
+    Logger::get_instance().warn(
+        "Client fd=" + std::to_string(_current_client->get_fd()) +
+        " no such process named `" + args[1] + "`");
     _current_client->send_response("No such process named `" + args[1] + "`\n");
-    std::cout << "process group not found" << std::endl;
     return;
   }
   for (auto &process : process_group->second) {
@@ -249,7 +248,9 @@ void Taskmaster::detach(const std::vector<std::string> &args) {
   std::lock_guard<std::mutex> lock(_process_pool.get_mutex());
   auto process_group = _process_pool.find(args[1]);
   if (process_group == _process_pool.end()) {
-    // TODO: add log
+    Logger::get_instance().warn(
+        "Client fd=" + std::to_string(_current_client->get_fd()) +
+        " no such process named `" + args[1] + "`");
     _current_client->send_response("No such process named `" + args[1] + "`\n");
     return;
   }
