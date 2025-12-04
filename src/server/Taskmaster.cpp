@@ -66,26 +66,32 @@ void Taskmaster::loop() {
   }
 }
 
-void Taskmaster::handle_poll_fds(PollFds::snapshot_t poll_fds_snapshot) {
-  for (size_t index = 1; index < poll_fds_snapshot.poll_fds.size(); index++) {
+void Taskmaster::handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot) {
+  for (size_t index = 0; index < poll_fds_snapshot.poll_fds.size(); index++) {
     const pollfd poll_fd = poll_fds_snapshot.poll_fds[index];
-    const PollFds::metadata_t fd_metadata = poll_fds_snapshot.metadata[index];
+    const auto [fd_type] = poll_fds_snapshot.metadata[index];
 
     if (poll_fd.revents != 0) {
-      if (fd_metadata.type == PollFds::FdType::Client) {
+      if ((poll_fd.revents & POLLNVAL) != 0) {
+        _poll_fds.remove_poll_fd(poll_fd.fd);
+        continue;
+      }
+      switch (fd_type) {
+      case PollFds::FdType::Process:
+        handle_process_output(poll_fd.fd);
+        break;
+      case PollFds::FdType::Client:
         handle_client_command(poll_fd);
-      } else if (fd_metadata.type == PollFds::FdType::Process) {
-        if ((poll_fd.revents & POLLNVAL) != 0) {
-          _poll_fds.remove_poll_fd(poll_fd.fd); // TODO: Is this really useful ?
-        } else {
-          read_process_output(poll_fd.fd);
-        }
-      } else if (fd_metadata.type == PollFds::FdType::WakeUp) {
-        handle_wake_up(poll_fd);
+        break;
+      case PollFds::FdType::WakeUp:
+        handle_wake_up(poll_fd.fd);
+        break;
+      case PollFds::FdType::Server:
+        handle_connection();
+        break;
       }
     }
   }
-  handle_connection(poll_fds_snapshot);
 }
 
 void Taskmaster::handle_client_command(const pollfd &poll_fd) {
@@ -110,25 +116,23 @@ void Taskmaster::handle_client_command(const pollfd &poll_fd) {
   }
 }
 
-void Taskmaster::handle_connection(PollFds::snapshot_t poll_fds_snapshot) {
-  if (poll_fds_snapshot.poll_fds[0].revents & POLLIN) {
-    int client_fd = _server_socket.accept_client();
-    if (client_fd == -1) {
-      // TODO: log handle_connection() failed
-      return;
-    }
-    // TODO: add log
-    _poll_fds.add_poll_fd({client_fd, POLLIN, 0}, {PollFds::FdType::Client});
-    _client_sessions.emplace_back(client_fd);
+void Taskmaster::handle_connection() {
+  int client_fd = _server_socket.accept_client();
+  if (client_fd == -1) {
+    // TODO: log handle_connection() failed
+    return;
   }
+  // TODO: add log
+  _poll_fds.add_poll_fd({client_fd, POLLIN, 0}, {PollFds::FdType::Client});
+  _client_sessions.emplace_back(client_fd);
 }
 
-void Taskmaster::handle_wake_up(const pollfd &poll_fd) {
+void Taskmaster::handle_wake_up(int fd) {
   char buffer[SOCKET_BUFFER_SIZE];
-  Socket::read(poll_fd.fd, buffer, SOCKET_BUFFER_SIZE);
+  Socket::read(fd, buffer, SOCKET_BUFFER_SIZE);
 }
 
-void Taskmaster::read_process_output(int fd) {
+void Taskmaster::handle_process_output(int fd) {
   for (auto &[name, processes] : _process_pool) {
     for (auto &process : processes) {
       if (fd == process.get_stdout_pipe()[PIPE_READ]) {

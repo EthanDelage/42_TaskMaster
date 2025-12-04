@@ -27,12 +27,11 @@ private:
   UnixSocketServer _server_socket;
   bool _running;
 
-  void handle_poll_fds(PollFds::snapshot_t poll_fds_snapshot);
+  void handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot);
   void handle_client_command(const pollfd &poll_fd);
-  void handle_connection(PollFds::snapshot_t poll_fds_snapshot);
-  void handle_wake_up(const pollfd &poll_fd);
-  void read_process_output(int fd);
   void handle_connection();
+  void handle_wake_up(int fd);
+  void handle_process_output(int fd);
   void reload_config();
   void disconnect_client(int fd);
   void request_command(const std::vector<std::string> &args,
