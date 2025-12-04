@@ -45,12 +45,10 @@ void Logger::log(Level level, const std::string &message) const {
                       now.time_since_epoch()) %
                   1000;
 
-  const std::string level_str = Logger::level_to_string(level);
-
   log_line_ss << '['
               << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %H:%M:%S")
               << '.' << std::setw(3) << std::setfill('0') << ms.count() << "] "
-              << '[' << Logger::level_to_string(level) << "] "
+              << '[' << level << "] "
               << "[pid=" << getpid() << "] " << message << std::endl;
 
   if (write(_fd, log_line_ss.str().c_str(), log_line_ss.str().size()) == -1) {
@@ -74,17 +72,23 @@ void Logger::error(const std::string &message) const {
   log(Level::Error, message);
 }
 
-std::string Logger::level_to_string(Level level) {
+std::ostream &operator<<(std::ostream &os, const Logger::Level &level) {
   switch (level) {
-  case Level::Debug:
-    return "DEBUG";
-  case Level::Info:
-    return "INFO";
-  case Level::Warning:
-    return "WARNING";
-  case Level::Error:
-    return "ERROR";
+  case Logger::Level::Debug:
+    os << "DEBUG";
+    break;
+  case Logger::Level::Info:
+    os << "INFO";
+    break;
+  case Logger::Level::Warning:
+    os << "WARNING";
+    break;
+  case Logger::Level::Error:
+    os << "ERROR";
+    break;
   default:
-    return "UNKNOWN";
+    os << "UNKNOWN";
+    break;
   }
+  return os;
 }

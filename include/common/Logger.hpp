@@ -23,11 +23,11 @@ public:
 private:
   explicit Logger(const std::string &log_file_path);
 
-  static std::string level_to_string(Level level);
-
   static std::unique_ptr<Logger> _instance;
   static std::once_flag _init_flag;
   int _fd{};
 };
+
+std::ostream &operator<<(std::ostream &os, const Logger::Level &level);
 
 #endif // LOGGER_HPP
