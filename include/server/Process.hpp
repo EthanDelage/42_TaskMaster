@@ -35,10 +35,10 @@ public:
   Process(std::shared_ptr<const process_config_t> process_config);
   ~Process();
 
-  int start();
-  int stop(int sig);
-  int kill();
-  int update_status(void);
+  void start();
+  void stop(int sig);
+  void kill();
+  void update_status(void);
   bool check_autorestart(void);
 
   void read_stdout();

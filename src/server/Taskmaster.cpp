@@ -24,11 +24,13 @@ Taskmaster::Taskmaster(const ConfigParser &config)
       _command_manager(get_commands_callback()),
       _process_pool(config.parse()),
       _server_socket(SOCKET_PATH_NAME),
+      _task_manager(_process_pool, _poll_fds),
       _running(true) {
   if (pipe(_wake_up_pipe) == -1) {
     throw std::runtime_error(
         "Error: Taskmaster() failed to create wake_up pipe");
   }
+  _task_manager.set_wake_up_fd(_wake_up_pipe[PIPE_WRITE]);
   _poll_fds.add_poll_fd({_server_socket.get_fd(), POLLIN, 0},
                         {PollFds::FdType::Server});
   _poll_fds.add_poll_fd({_wake_up_pipe[PIPE_READ], POLLIN, 0},
@@ -36,7 +38,7 @@ Taskmaster::Taskmaster(const ConfigParser &config)
 }
 
 void Taskmaster::loop() {
-  TaskManager task_manager(_process_pool, _poll_fds, _wake_up_pipe[PIPE_WRITE]);
+  _task_manager.start();
   set_sighup_handler();
   if (_server_socket.listen(BACKLOG) == -1) {
     return;
@@ -50,6 +52,9 @@ void Taskmaster::loop() {
         throw std::runtime_error("poll()");
       }
       continue;
+    }
+    if (!_task_manager.is_thread_alive()) {
+      return;
     }
     handle_poll_fds(poll_fds_snapshot);
     if (sighup_received_g) {
@@ -222,6 +227,7 @@ void Taskmaster::reload(const std::vector<std::string> &) {
 
 void Taskmaster::quit(const std::vector<std::string> &) {
   _running = false;
+  _task_manager.stop();
   _current_client->send_response("Quitting taskmaster...\n");
 }
 

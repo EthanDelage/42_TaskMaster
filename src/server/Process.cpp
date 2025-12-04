@@ -25,6 +25,7 @@ Process::Process(std::shared_ptr<const process_config_t> process_config)
       _num_retries(0),
       _state(State::Waiting),
       _previous_state(State::Waiting),
+      _status{.running = false, .killed = false},
       _pending_command(Command::None),
       _stdout_pipe{-1, -1},
       _stderr_pipe{-1, -1},
@@ -54,7 +55,7 @@ Process::~Process() {
   close(_stderr_fd);
 }
 
-int Process::start() {
+void Process::start() {
   if (pipe(_stdout_pipe) == -1) {
     throw std::runtime_error("Error: Process() failed to create stdout pipe");
   }
@@ -63,8 +64,7 @@ int Process::start() {
   }
   _pid = fork();
   if (_pid == -1) {
-    perror("fork");
-    return -1;
+    throw std::runtime_error(std::string("fork: ") + strerror(errno));
   }
   if (_pid > 0) {
     // parent process
@@ -76,7 +76,7 @@ int Process::start() {
     _status.killed = false;
     std::cout << "[Taskmaster] Started " << _process_config->name << "(" << _pid
               << ")" << std::endl;
-    return 0;
+    return;
   }
   close(_stdout_pipe[PIPE_READ]);
   close(_stderr_pipe[PIPE_READ]);
@@ -88,49 +88,52 @@ int Process::start() {
   std::exit(errno);
 }
 
-int Process::stop(const int sig) {
+void Process::stop(const int sig) {
   if (_pid == -1) {
+    _status.running = false;
     throw std::runtime_error(
-        "Error: Process::stop(): trying to kill process with pid -1");
+        "Process::stop(): trying to kill process with pid -1");
   }
   if (::kill(_pid, sig) == -1) {
-    perror("kill");
-    return -1;
+    _pid = -1;
+    _status.running = false;
+    throw std::runtime_error(std::string("kill: ") + strerror(errno));
   }
   _stop_timestamp = std::chrono::steady_clock::now();
-  return 0;
 }
 
-int Process::kill() {
+void Process::kill() {
+  _status.killed = true;
   if (_pid == -1) {
-    throw std::runtime_error("Trying to kill an unstarted process\n");
+    _status.running = false;
+    throw std::runtime_error(
+        "Process::kill(): trying to kill process with pid -1");
   }
   if (::kill(_pid, SIGKILL) == -1) {
-    perror("kill");
-    return -1;
+    _pid = -1;
+    _status.running = false;
+    throw std::runtime_error(std::string("kill: ") + strerror(errno));
   }
-  _status.killed = true;
-  return 0;
 }
 
-int Process::update_status(void) {
+void Process::update_status(void) {
   int status;
 
   pid_t result = waitpid(_pid, &status, WNOHANG);
   if (result == -1) {
     // Here waitpid returned an error, it may be due to
     // this function being called without the process being started.
-    perror("waitpid");
-    return -1;
+    _status.running = false;
+    _pid = -1;
+    throw std::runtime_error(std::string("waitpid: ") + strerror(errno));
   }
   if (result == 0) {
     _status.running = true;
-    return 0;
+    return;
   }
   _status.running = false;
-  _status.exitstatus = WEXITSTATUS(status);
   _pid = -1;
-  return 0;
+  _status.exitstatus = WEXITSTATUS(status);
 }
 
 /**

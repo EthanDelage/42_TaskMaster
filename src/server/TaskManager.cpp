@@ -7,13 +7,11 @@
 #include <iostream>
 #include <thread>
 
-TaskManager::TaskManager(ProcessPool &process_pool, PollFds &poll_fds,
-                         int wake_up_fd)
+TaskManager::TaskManager(ProcessPool &process_pool, PollFds &poll_fds)
     : _process_pool(process_pool),
-      _worker_thread(std::thread(&TaskManager::work, this)),
-      _stop_token(false),
+      _stop_token(true),
       _poll_fds(poll_fds),
-      _wake_up_fd(wake_up_fd) {
+      _wake_up_fd(-1) {
   std::cout << "TaskManager::TaskManager()" << std::endl;
 }
 
@@ -26,17 +24,119 @@ TaskManager::~TaskManager() {
   }
 }
 
+void TaskManager::start() {
+  if (_wake_up_fd == -1) {
+    throw std::runtime_error("TaskManager::start: wake up fd not set");
+  }
+  _stop_token = false;
+  _worker_thread = std::thread(&TaskManager::work, this);
+}
+
+void TaskManager::stop() { _stop_token = true; }
+
+bool TaskManager::is_thread_alive() const { return (!_stop_token); }
+
+void TaskManager::set_wake_up_fd(int wake_up_fd) { _wake_up_fd = wake_up_fd; }
+
 void TaskManager::work() {
   std::cout << "TaskManager::work()" << std::endl;
-  while (!_stop_token) {
+  try {
+    while (!_stop_token) {
+      std::lock_guard lock(_process_pool.get_mutex());
+      for (auto &[_, process_group] : _process_pool) {
+        for (auto &process : process_group) {
+          fsm(process);
+        }
+      }
+    }
+  } catch (std::exception &e) {
+    _stop_token = true;
+    std::cout << e.what() << std::endl;
+  }
+  exit_gracefully();
+}
+
+void TaskManager::exit_gracefully() {
+  bool flag;
+  do {
+    flag = false;
     std::lock_guard lock(_process_pool.get_mutex());
     for (auto &[_, process_group] : _process_pool) {
       for (auto &process : process_group) {
-        fsm(process);
+        if (!exit_process_gracefully(process)) {
+          // The process did not exit yet, so we stay in the loop
+          flag = true;
+        }
       }
     }
+  } while (flag);
+  Socket::write(_wake_up_fd, WAKE_UP_STRING);
+  std::cout << "[TaskManager] exited gracefully" << std::endl;
+}
+
+/*
+ * @return true if the process exited, false otherwise
+ */
+bool TaskManager::exit_process_gracefully(Process &process) {
+  if (process.get_pid() == -1) {
+    process.set_state(Process::State::Stopped);
   }
-  // TODO: Exit all processes cleanly
+  switch (process.get_state()) {
+  case Process::State::Waiting:
+    process.set_state(Process::State::Stopped);
+    break;
+  case Process::State::Starting:
+  case Process::State::Running:
+    process.set_state(Process::State::Exiting);
+    break;
+  case Process::State::Exiting:
+    try {
+      process.update_status();
+    } catch (std::exception &e) {
+      std::cerr << "Could not update " << process.get_process_config().name
+                << " status" << std::endl;
+      std::cerr << e.what() << std::endl;
+      break;
+    }
+    if (process.get_state() != process.get_previous_state()) {
+      std::cout << "[TaskManager] Quitting "
+                << process.get_process_config().name << std::endl;
+      try {
+        process.stop(process.get_process_config().stopsignal);
+      } catch (std::exception &e) {
+        std::cerr << "Could not stop " << process.get_process_config().name
+                  << std::endl;
+        std::cerr << e.what() << std::endl;
+      }
+    }
+    if (process.get_stoptime() >= process.get_process_config().stoptime &&
+        process.get_status().running) {
+      if (!process.get_status().killed) {
+        std::cout << "[TaskManager] Killing "
+                  << process.get_process_config().name << std::endl;
+        try {
+          process.kill();
+        } catch (std::exception &e) {
+          std::cerr << "Could not kill " << process.get_process_config().name
+                    << std::endl;
+          std::cerr << e.what() << std::endl;
+        }
+      }
+    }
+    if (!process.get_status().running) {
+      process.set_state(Process::State::Stopped);
+    }
+    process.set_previous_state(Process::State::Exiting);
+    break;
+  case Process::State::Stopped:
+    if (process.get_state() != process.get_previous_state()) {
+      std::cout << "[TaskManager] Stopped " << process.get_process_config().name
+                << std::endl;
+    }
+    process.set_previous_state(Process::State::Stopped);
+    return true;
+  }
+  return false;
 }
 
 void TaskManager::fsm(Process &process) {
@@ -129,7 +229,6 @@ void TaskManager::fsm_transit_state(Process &process,
     break;
   case Process::State::Stopped:
     next_state = Process::State::Stopped;
-    status = process.get_status();
     if ((process.get_pending_command() == Process::Command::Start ||
          process.get_pending_command() == Process::Command::Restart) ||
         (process.get_previous_state() == Process::State::Running &&
@@ -187,8 +286,9 @@ void TaskManager::fsm_exiting_task(Process &process,
   if (process.get_state() != process.get_previous_state()) {
     process.stop(config.stopsignal);
     return;
-  } else if (process.get_stoptime() >= config.stoptime &&
-             process.get_status().running) {
+  }
+  if (process.get_stoptime() >= config.stoptime &&
+      process.get_status().running) {
     if (!process.get_status().killed) {
       process.kill();
     }
