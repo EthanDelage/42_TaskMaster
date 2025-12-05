@@ -28,6 +28,7 @@ void TaskmasterCtl::loop() {
   while (_is_running) {
     input = readline(_prompt_string.c_str());
     if (input == nullptr) {
+      std::cout << "Exiting TaskmasterCtl ..." << std::endl;
       break; // EOF or error
     }
     if (*input != '\0') {
