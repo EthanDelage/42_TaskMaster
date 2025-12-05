@@ -1,6 +1,7 @@
 #include "server/PollFds.hpp"
 
 #include <algorithm>
+#include <stdexcept>
 
 PollFds::PollFds() {}
 

@@ -26,7 +26,7 @@ Process::Process(std::shared_ptr<const process_config_t> process_config)
       _num_retries(0),
       _state(State::Waiting),
       _previous_state(State::Waiting),
-      _status{.running = false, .killed = false},
+      _status{.running = false, .killed = false, .exitstatus = 0},
       _pending_command(Command::None),
       _stdout_pipe{-1, -1},
       _stderr_pipe{-1, -1},

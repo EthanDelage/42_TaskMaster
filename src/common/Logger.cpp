@@ -52,7 +52,10 @@ void Logger::log(Level level, const std::string &message) {
               << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %H:%M:%S")
               << '.' << std::setw(3) << std::setfill('0') << ms.count() << "] "
               << '[' << level << "] "
-              << "[pid=" << getpid() << "] " << message << std::endl;
+              << "[pid=" << getpid() << "] " << message;
+  if (message[message.length() - 1] != '\n') {
+    log_line_ss << std::endl;
+  }
 
   std::lock_guard lock(_mutex);
   if (Socket::write(_fd, log_line_ss.str()) == -1) {
