@@ -24,14 +24,14 @@ std::string ClientSession::recv_command() const {
   if (ret == 0) {
     throw std::runtime_error("client disconnected");
   }
-  Logger::get_instance().info("Read " + std::to_string(ret) +
-                              " bytes from fd=" + std::to_string(_fd) + ": `" +
-                              buffer_str + '`');
   buffer_str = std::string(_buffer, ret);
   endl_pos = buffer_str.find('\n');
   if (endl_pos != std::string::npos) {
     buffer_str.erase(endl_pos);
   }
+  Logger::get_instance().info("Read " + std::to_string(ret) +
+                              " bytes from fd=" + std::to_string(_fd) + ": `" +
+                              buffer_str + '`');
   return buffer_str;
 }
 

@@ -15,6 +15,7 @@ public:
 
   void stop(int sig);
   void start();
+  std::string str() const;
 
   GroupIterator begin();
   GroupConstIterator begin() const;

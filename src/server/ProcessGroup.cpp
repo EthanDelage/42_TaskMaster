@@ -1,4 +1,5 @@
 #include "server/ProcessGroup.hpp"
+#include "common/Logger.hpp"
 #include <iostream>
 
 ProcessGroup::ProcessGroup(process_config_t &&config) {
@@ -13,6 +14,7 @@ process_config_t const &ProcessGroup::get_process_config() const {
 }
 
 void ProcessGroup::stop(const int sig) {
+  Logger::get_instance().info("Stopping " + str());
   for (Process &process : _process_vector) {
     if (process.get_status().running) {
       process.stop(sig);
@@ -21,9 +23,14 @@ void ProcessGroup::stop(const int sig) {
 }
 
 void ProcessGroup::start() {
+  Logger::get_instance().info("Starting" + str());
   for (Process &process : _process_vector) {
     process.start();
   }
+}
+
+std::string ProcessGroup::str() const {
+  return "pgroup [" + _config->name + "]#" + std::to_string(_config->numprocs);
 }
 
 ProcessGroup::GroupIterator ProcessGroup::begin() {
@@ -51,8 +58,7 @@ ProcessGroup::GroupConstIterator ProcessGroup::cend() const {
 }
 
 std::ostream &operator<<(std::ostream &os, const ProcessGroup &process_group) {
-  os << "[" << process_group.get_process_config().name << "] ";
-  os << "#" << process_group.get_process_config().numprocs << std::endl;
+  os << process_group.str() << std::endl;
   for (const Process &process : process_group) {
     os << '\t' << process << std::endl;
   }

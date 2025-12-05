@@ -46,6 +46,7 @@ public:
   void attach_client(int fd);
   void detach_client(int fd);
   void close_outputs();
+  std::string str() const;
 
   const process_config_t &get_process_config() const;
   pid_t get_pid() const;
@@ -91,5 +92,6 @@ private:
 
 std::ostream &operator<<(std::ostream &os, const Process &process);
 std::ostream &operator<<(std::ostream &os, const Process::State &state);
+std::string process_state_str(const Process::State &state);
 
 #endif // PROCESS_HPP
