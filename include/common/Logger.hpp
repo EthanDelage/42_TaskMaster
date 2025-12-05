@@ -27,6 +27,7 @@ public:
 private:
   explicit Logger(const std::string &log_file_path);
 
+  std::string log_level_to_color(Level level) const;
   static std::unique_ptr<Logger> _instance;
   static std::once_flag _init_flag;
   int _fd{};

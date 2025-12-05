@@ -9,6 +9,20 @@
 #include <sys/fcntl.h>
 #include <unistd.h>
 
+#define COLOR_RESET   "\033[0m"
+#define COLOR_RED     "\033[31m"
+#define COLOR_GREEN   "\033[32m"
+#define COLOR_YELLOW  "\033[33m"
+#define COLOR_BLUE    "\033[34m"
+#define COLOR_MAGENTA "\033[35m"
+#define COLOR_CYAN    "\033[36m"
+#define COLOR_WHITE   "\033[37m"
+
+#define DEBUG_COLOR COLOR_GREEN
+#define INFO_COLOR COLOR_BLUE
+#define WARN_COLOR COLOR_YELLOW
+#define ERROR_COLOR COLOR_RED
+
 std::unique_ptr<Logger> Logger::_instance;
 std::once_flag Logger::_init_flag;
 
@@ -62,11 +76,11 @@ void Logger::log(Level level, const std::string &message) {
     throw std::runtime_error("Logger::log(): Failed to write to file");
   }
   if (level == Level::Error) {
-    std::cerr << log_line_ss.str();
+    std::cerr << log_level_to_color(level) << log_line_ss.str() << COLOR_RESET;
   }
 #ifdef LOG_TO_STDOUT
   else {
-    std::cout << log_line_ss.str();
+    std::cout << log_level_to_color(level) << log_line_ss.str() << COLOR_RESET;
   }
 #endif
 }
@@ -78,6 +92,21 @@ void Logger::info(const std::string &message) { log(Level::Info, message); }
 void Logger::warn(const std::string &message) { log(Level::Warning, message); }
 
 void Logger::error(const std::string &message) { log(Level::Error, message); }
+
+std::string Logger::log_level_to_color(Level level) const {
+  switch (level) {
+  case Logger::Level::Debug:
+    return DEBUG_COLOR;
+  case Logger::Level::Info:
+    return INFO_COLOR;
+  case Logger::Level::Warning:
+    return WARN_COLOR;
+  case Logger::Level::Error:
+    return ERROR_COLOR;
+  default:
+    return "";
+  }
+}
 
 std::ostream &operator<<(std::ostream &os, const Logger::Level &level) {
   switch (level) {
