@@ -4,6 +4,8 @@
 #include <common/utils.hpp>
 #include <iomanip>
 #include <iostream>
+#include <readline/history.h>
+#include <readline/readline.h>
 #include <sstream>
 
 volatile sig_atomic_t sigint_received_g = 0;
@@ -20,15 +22,19 @@ TaskmasterCtl::TaskmasterCtl(std::string prompt_string)
 }
 
 void TaskmasterCtl::loop() {
-  std::string input;
+  char *input;
 
   print_header();
   while (_is_running) {
-    std::cout << _prompt_string;
-    if (!std::getline(std::cin, input)) {
+    input = readline(_prompt_string.c_str());
+    if (input == nullptr) {
       break; // EOF or error
     }
-    run_command(input);
+    if (*input != '\0') {
+      add_history(input);
+    }
+    run_command(std::string(input));
+    free(input);
   }
 }
 
@@ -74,9 +80,8 @@ void TaskmasterCtl::attach(const std::vector<std::string> &args) {
   send_command(args);
   set_sigint_handler();
   while (sigint_received_g == 0) {
-    receive_response();
+    receive_response(false);
   }
-  std::cout << std::endl;
   send_and_receive({CMD_DETACH_STR, args[1]});
   reset_sigint_handler();
   sigint_received_g = 0;
@@ -113,7 +118,7 @@ void TaskmasterCtl::print_header() {
                "programs.\n\n";
 }
 
-void TaskmasterCtl::receive_response() const {
+void TaskmasterCtl::receive_response(bool log_to_logfile) const {
   char buffer[SOCKET_BUFFER_SIZE];
   ssize_t ret;
 
@@ -123,8 +128,10 @@ void TaskmasterCtl::receive_response() const {
                                  strerror(errno));
     return;
   }
-  Logger::get_instance().info("response received:\n" +
-                              std::string(buffer, ret));
+  if (log_to_logfile == true) {
+    Logger::get_instance().info("response received: " +
+                                std::string(buffer, ret));
+  }
   std::cout << std::string(buffer, ret);
 }
 
@@ -175,4 +182,7 @@ TaskmasterCtl::get_commands_callback() {
   };
 }
 
-static void sigint_handler(int) { sigint_received_g = 1; }
+static void sigint_handler(int) {
+  sigint_received_g = 1;
+  std::cout << std::endl;
+}

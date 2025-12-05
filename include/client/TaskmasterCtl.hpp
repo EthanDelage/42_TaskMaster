@@ -39,7 +39,7 @@ private:
   void quit(const std::vector<std::string> &);
   void print_usage(const std::vector<std::string> &) const;
   static void print_header();
-  void receive_response() const;
+  void receive_response(bool log_to_logfile = true) const;
   size_t get_usage_max_len() const;
   std::unordered_map<std::string, cmd_callback_t> get_commands_callback();
 };
