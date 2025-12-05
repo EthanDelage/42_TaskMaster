@@ -63,7 +63,7 @@ void Taskmaster::loop() {
       for (auto &client_session : _client_sessions) {
         if (client_session.get_reload_request()) {
           // TODO: update the reload response message
-          client_session.send_response("successful reload");
+          client_session.send_response("successful reload\n");
           client_session.set_reload_request(false);
         }
       }
@@ -78,7 +78,9 @@ void Taskmaster::handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot) {
     const auto [fd_type] = poll_fds_snapshot.metadata[index];
 
     if (poll_fd.revents != 0) {
-      Logger::get_instance().debug("fd=" + std::to_string(poll_fd.fd) + " revents=" + std::to_string(poll_fd.revents));
+      Logger::get_instance().debug(
+          "fd=" + std::to_string(poll_fd.fd) +
+          " revents=" + std::to_string(poll_fd.revents));
       if ((poll_fd.revents & POLLNVAL) != 0) {
         _poll_fds.remove_poll_fd(poll_fd.fd);
         continue;

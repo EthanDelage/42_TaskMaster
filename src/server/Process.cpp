@@ -99,7 +99,7 @@ void Process::stop(const int sig) {
     throw std::runtime_error(std::string("kill: ") + strerror(errno));
   }
   _stop_timestamp = std::chrono::steady_clock::now();
-    Logger::get_instance().info(str() + ": Stopped");
+  Logger::get_instance().info(str() + ": Stopped");
 }
 
 void Process::kill() {
@@ -135,7 +135,8 @@ void Process::update_status(void) {
   _status.running = false;
   _pid = -1;
   _status.exitstatus = WEXITSTATUS(status);
-  Logger::get_instance().info(str() + ": exited with status code " + std::to_string(_status.exitstatus));
+  Logger::get_instance().info(str() + ": exited with status code " +
+                              std::to_string(_status.exitstatus));
 }
 
 /**

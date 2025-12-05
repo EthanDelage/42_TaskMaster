@@ -12,8 +12,7 @@ TaskManager::TaskManager(ProcessPool &process_pool, PollFds &poll_fds)
     : _process_pool(process_pool),
       _stop_token(true),
       _poll_fds(poll_fds),
-      _wake_up_fd(-1) {
-}
+      _wake_up_fd(-1) {}
 
 TaskManager::~TaskManager() {
   _stop_token = true;
@@ -52,7 +51,8 @@ void TaskManager::work() {
     }
   } catch (std::exception &e) {
     _stop_token = true;
-    Logger::get_instance().error(std::string("TaskManager::work: caught an exception: ") + e.what());
+    Logger::get_instance().error(
+        std::string("TaskManager::work: caught an exception: ") + e.what());
   }
   exit_gracefully();
 }
@@ -95,14 +95,20 @@ bool TaskManager::exit_process_gracefully(Process &process) {
     try {
       process.update_status();
     } catch (std::exception &e) {
-      Logger::get_instance().error(std::string("TaskManager::exit_process_gracefully: process.update_status: ") + e.what());
+      Logger::get_instance().error(
+          std::string(
+              "TaskManager::exit_process_gracefully: process.update_status: ") +
+          e.what());
       break;
     }
     if (process.get_state() != process.get_previous_state()) {
       try {
         process.stop(process.get_process_config().stopsignal);
       } catch (std::exception &e) {
-        Logger::get_instance().error(std::string("TaskManager::exit_process_gracefully: process.stop: ") + e.what());
+        Logger::get_instance().error(
+            std::string(
+                "TaskManager::exit_process_gracefully: process.stop: ") +
+            e.what());
       }
     }
     if (process.get_stoptime() >= process.get_process_config().stoptime &&
@@ -111,7 +117,10 @@ bool TaskManager::exit_process_gracefully(Process &process) {
         try {
           process.kill();
         } catch (std::exception &e) {
-          Logger::get_instance().error(std::string("TaskManager::exit_process_gracefully: process.kill: ") + e.what());
+          Logger::get_instance().error(
+              std::string(
+                  "TaskManager::exit_process_gracefully: process.kill: ") +
+              e.what());
         }
       }
     }
@@ -177,7 +186,7 @@ void TaskManager::fsm_transit_state(Process &process,
     } else if (process.get_pending_command() == Process::Command::Restart ||
                process.get_pending_command() == Process::Command::Stop) {
       next_state = Process::State::Exiting;
-               }
+    }
     break;
   case Process::State::Running:
     next_state = Process::State::Running;
@@ -201,19 +210,18 @@ void TaskManager::fsm_transit_state(Process &process,
     if ((process.get_pending_command() == Process::Command::Start ||
          process.get_pending_command() == Process::Command::Restart) ||
         (process.get_previous_state() == Process::State::Running &&
-         process.check_autorestart()) || // Process was successfully started and
-                                         // needs autorestart
+         process.check_autorestart()) ||
         (process.get_previous_state() == Process::State::Starting &&
-         process.get_num_retries() <=
-             config.startretries)) { // Process was unsuccessfully started
-                                     // and num_retries <= startretries
+         process.get_num_retries() <= config.startretries)) {
+      // Process was unsuccessfully started and num_retries <= startretries
       next_state = Process::State::Starting;
     }
     break;
   }
   if (next_state != process.get_state()) {
     Logger::get_instance().debug(process.str() + ": " +
-      process_state_str(process.get_state()) + ">" + process_state_str(next_state));
+                                 process_state_str(process.get_state()) + ">" +
+                                 process_state_str(next_state));
   }
   process.set_previous_state(process.get_state());
   process.set_state(next_state);
@@ -281,4 +289,3 @@ void TaskManager::fsm_stopped_task(Process &process) {
     process.set_pending_command(Process::Command::None);
   }
 }
-
