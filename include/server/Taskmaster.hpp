@@ -12,6 +12,8 @@
 #include <sys/poll.h>
 #include <unordered_map>
 
+#define TASKMASTER_PIDFILE "/var/run/taskmasterd.pid"
+
 class Taskmaster {
 public:
   explicit Taskmaster(const ConfigParser &config);
