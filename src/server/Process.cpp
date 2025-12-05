@@ -46,7 +46,6 @@ Process::Process(std::shared_ptr<const process_config_t> process_config)
   if (_stderr_fd == -1) {
     throw std::runtime_error(std::string("open") + strerror(errno));
   }
-  std::cout << "Process " << _process_config->name << " created" << std::endl;
 }
 
 Process::~Process() {
@@ -75,8 +74,7 @@ void Process::start() {
     _stderr_pipe[PIPE_WRITE] = -1;
     _start_timestamp = std::chrono::steady_clock::now();
     _status.killed = false;
-    std::cout << "[Taskmaster] Started " << _process_config->name << "(" << _pid
-              << ")" << std::endl;
+    Logger::get_instance().info(str() + ": Started");
     return;
   }
   close(_stdout_pipe[PIPE_READ]);
@@ -101,6 +99,7 @@ void Process::stop(const int sig) {
     throw std::runtime_error(std::string("kill: ") + strerror(errno));
   }
   _stop_timestamp = std::chrono::steady_clock::now();
+    Logger::get_instance().info(str() + ": Stopped");
 }
 
 void Process::kill() {
@@ -115,6 +114,7 @@ void Process::kill() {
     _status.running = false;
     throw std::runtime_error(std::string("kill: ") + strerror(errno));
   }
+  Logger::get_instance().info(str() + ": Killed");
 }
 
 void Process::update_status(void) {
@@ -135,6 +135,7 @@ void Process::update_status(void) {
   _status.running = false;
   _pid = -1;
   _status.exitstatus = WEXITSTATUS(status);
+  Logger::get_instance().info(str() + ": exited with status code " + std::to_string(_status.exitstatus));
 }
 
 /**
@@ -197,6 +198,10 @@ void Process::close_outputs() {
   _stdout_pipe[PIPE_READ] = -1;
   close(_stderr_pipe[PIPE_READ]);
   _stderr_pipe[PIPE_READ] = -1;
+}
+
+std::string Process::str() const {
+  return "proc [" + _process_config->name + "](" + std::to_string(_pid) + ")";
 }
 
 unsigned long Process::get_runtime(void) {
@@ -323,22 +328,22 @@ std::ostream &operator<<(std::ostream &os, const Process &process) {
 }
 
 std::ostream &operator<<(std::ostream &os, const Process::State &state) {
+  os << process_state_str(state);
+  return os;
+}
+
+std::string process_state_str(const Process::State &state) {
   switch (state) {
   case Process::State::Waiting:
-    os << "Waiting";
-    break;
+    return "(Waiting)";
   case Process::State::Starting:
-    os << "Starting";
-    break;
+    return "(Starting)";
   case Process::State::Running:
-    os << "Running";
-    break;
+    return "(Running)";
   case Process::State::Exiting:
-    os << "Exiting";
-    break;
+    return "(Exiting)";
   case Process::State::Stopped:
-    os << "Stopped";
-    break;
+    return "(Stopped)";
   }
-  return os;
+  return "(UNDEFINED)";
 }

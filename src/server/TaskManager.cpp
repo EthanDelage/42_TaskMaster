@@ -175,12 +175,8 @@ void TaskManager::fsm_transit_state(Process &process,
   switch (process.get_state()) {
   case Process::State::Waiting:
     if (!config.autostart) {
-      std::cout << "[TaskManager] " << config.name << ":"
-                << " (Waiting)>(Stopped)" << std::endl;
       next_state = Process::State::Stopped;
     } else {
-      std::cout << "[TaskManager] " << config.name << ":"
-                << " (Waiting)>(Starting)" << std::endl;
       next_state = Process::State::Starting;
     }
     break;
@@ -188,35 +184,23 @@ void TaskManager::fsm_transit_state(Process &process,
     next_state = Process::State::Starting;
     status = process.get_status();
     if (config.starttime == 0) {
-      std::cout << "[TaskManager] " << config.name << ":"
-                << " (Starting)>(Running)" << std::endl;
       next_state = Process::State::Running;
     } else if (!status.running) {
-      std::cout << "[TaskManager] " << config.name << ":"
-                << " (Starting)>(Stopped)" << std::endl;
       next_state = Process::State::Stopped;
     } else if (process.get_runtime() >= config.starttime) {
-      std::cout << "[TaskManager] " << config.name << ":"
-                << " (Starting)>(Running)" << std::endl;
       next_state = Process::State::Running;
     } else if (process.get_pending_command() == Process::Command::Restart ||
                process.get_pending_command() == Process::Command::Stop) {
-      std::cout << "[TaskManager] " << config.name << ":"
-                << " (Starting)>(Exiting)" << std::endl;
       next_state = Process::State::Exiting;
-    }
+               }
     break;
   case Process::State::Running:
     next_state = Process::State::Running;
     status = process.get_status();
     if (!status.running) {
-      std::cout << "[TaskManager] " << config.name << ":"
-                << " (Running)>(Stopped)" << std::endl;
       next_state = Process::State::Stopped;
     } else if (process.get_pending_command() == Process::Command::Restart ||
                process.get_pending_command() == Process::Command::Stop) {
-      std::cout << "[TaskManager] " << config.name << ":"
-                << " (Running)>(Exiting)" << std::endl;
       next_state = Process::State::Exiting;
     }
     break;
@@ -224,8 +208,6 @@ void TaskManager::fsm_transit_state(Process &process,
     next_state = Process::State::Exiting;
     status = process.get_status();
     if (!status.running) {
-      std::cout << "[TaskManager] " << config.name << ":"
-                << " (Exiting)>(Stopped)" << std::endl;
       next_state = Process::State::Stopped;
     }
     break;
@@ -240,11 +222,13 @@ void TaskManager::fsm_transit_state(Process &process,
          process.get_num_retries() <=
              config.startretries)) { // Process was unsuccessfully started
                                      // and num_retries <= startretries
-      std::cout << "[TaskManager] " << config.name << ":"
-                << " (Stopped)>(Starting)" << std::endl;
       next_state = Process::State::Starting;
     }
     break;
+  }
+  if (next_state != process.get_state()) {
+    Logger::get_instance().debug(process.str() + ": " +
+      process_state_str(process.get_state()) + ">" + process_state_str(next_state));
   }
   process.set_previous_state(process.get_state());
   process.set_state(next_state);
@@ -312,3 +296,4 @@ void TaskManager::fsm_stopped_task(Process &process) {
     process.set_pending_command(Process::Command::None);
   }
 }
+
