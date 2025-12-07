@@ -63,7 +63,7 @@ void Taskmaster::loop() {
       for (auto &client_session : _client_sessions) {
         if (client_session.get_reload_request()) {
           // TODO: update the reload response message
-          client_session.send_response("successful reload");
+          client_session.send_response("successful reload\n");
           client_session.set_reload_request(false);
         }
       }
@@ -78,6 +78,9 @@ void Taskmaster::handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot) {
     const auto [fd_type] = poll_fds_snapshot.metadata[index];
 
     if (poll_fd.revents != 0) {
+      Logger::get_instance().debug(
+          "fd=" + std::to_string(poll_fd.fd) +
+          " revents=" + std::to_string(poll_fd.revents));
       if ((poll_fd.revents & POLLNVAL) != 0) {
         _poll_fds.remove_poll_fd(poll_fd.fd);
         continue;
@@ -151,32 +154,31 @@ void Taskmaster::reload_config() {
   ProcessPool new_pool(_config.parse());
 
   std::lock_guard lock(_process_pool.get_mutex());
-  std::cout << "Reloading the config..." << std::endl;
+  Logger::get_instance().info("Reloading config...");
   for (auto it = new_pool.begin(); it != new_pool.end();) {
     auto old_it = _process_pool.find(it->first);
     if (old_it != _process_pool.end()) {
-      std::cout << "Checking [" << it->first << "] ... ";
       if (compare_config(old_it->second.get_process_config(),
                          it->second.get_process_config())) {
-        std::cout << "no need to reload" << std::endl;
+        Logger::get_instance().info("No need to reload " + it->second.str());
         it = new_pool.erase(it);
         new_pool.move_from(_process_pool, old_it->first);
         continue;
       }
-      std::cout << "will be reloaded" << std::endl;
+      Logger::get_instance().info("Reloading " + it->second.str());
     }
     ++it;
   }
   for (auto &it : _process_pool) {
-    std::cout << "Stopping old process [" << it.first << "]" << std::endl;
     it.second.stop(SIGKILL);
   }
+  Logger::get_instance().info("Config successfully reloaded");
   _process_pool = std::move(new_pool);
 }
 
 void Taskmaster::disconnect_client(int fd) {
-  Logger::get_instance().info("Client fd= " + std::to_string(fd) +
-                              "disconnected");
+  Logger::get_instance().info("Client fd=" + std::to_string(fd) +
+                              " disconnected");
   remove_client_session(fd);
   _poll_fds.remove_poll_fd(fd);
 }
@@ -208,7 +210,6 @@ void Taskmaster::status(const std::vector<std::string> &) {
 }
 
 void Taskmaster::start(const std::vector<std::string> &args) {
-
   request_command(args, Process::Command::Start);
 }
 
