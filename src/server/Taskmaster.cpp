@@ -48,6 +48,7 @@ void Taskmaster::loop() {
     PollFds::snapshot_t poll_fds_snapshot = _poll_fds.get_snapshot();
     int result = poll(poll_fds_snapshot.poll_fds.data(),
                       poll_fds_snapshot.poll_fds.size(), -1);
+    Logger::get_instance().debug("Poll returned: " + std::to_string(result));
     if (result == -1) {
       if (errno != EINTR) {
         throw std::runtime_error("poll()");
@@ -55,6 +56,8 @@ void Taskmaster::loop() {
       continue;
     }
     if (!_task_manager.is_thread_alive()) {
+      Logger::get_instance().debug(
+          "Taskmaster::loop(): TaskManager thread is no longer active");
       return;
     }
     handle_poll_fds(poll_fds_snapshot);
@@ -187,7 +190,8 @@ void Taskmaster::remove_client_session(int fd) {
   auto it = get_client_session_from_fd(fd);
 
   if (it == _client_sessions.end()) {
-    throw std::runtime_error("disconnect_client(): invalid fd");
+    throw std::runtime_error("disconnect_client(): invalid fd=" +
+                             std::to_string(fd));
   }
   _client_sessions.erase(it);
 }
