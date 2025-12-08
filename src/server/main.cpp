@@ -19,6 +19,9 @@ int main(int argc, char **argv) {
     taskmaster.loop();
   } catch (const std::exception &e) {
     Logger::get_instance().error(e.what());
+    Logger::get_instance().info("Shutting down with failure...");
+    return EXIT_FAILURE;
   }
-  return 0;
+  Logger::get_instance().info("Shutting down...");
+  return EXIT_SUCCESS;
 }
