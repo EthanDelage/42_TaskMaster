@@ -38,13 +38,14 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
   Logger::get_instance().info(std::string("main: closing pidfile_fd=") +
-                               std::to_string(pidfile_fd));
+                              std::to_string(pidfile_fd));
   close(pidfile_fd);
   Logger::get_instance().debug(std::string("main: unlink ") +
                                TASKMASTER_PIDFILE);
   unlink(TASKMASTER_PIDFILE);
   Logger::get_instance().info("Shutting down...");
-  return EXIT_SUCCESS;}
+  return EXIT_SUCCESS;
+}
 
 static int daemon_start(const char *daemon_user) {
   uid_t uid;
