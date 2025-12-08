@@ -1,5 +1,6 @@
-NAME        := taskmaster
-BUILD_DIR   := .build
+NAME        	:= taskmaster
+BUILD_DIR   	:= .build
+DEBUG_BUILD_DIR	:=	.debug
 
 .PHONY: all
 all:
@@ -19,8 +20,8 @@ re: fclean all
 
 .PHONY: debug
 debug:
-	cmake -S . -B $(BUILD_DIR) -DDEBUG=1
-	cmake --build $(BUILD_DIR)
+	cmake -S . -B $(DEBUG_BUILD_DIR) -DCMAKE_BUILD_TYPE=Debug
+	cmake --build $(DEBUG_BUILD_DIR)
 
 .PHONY: re_debug
 re_debug: fclean debug
