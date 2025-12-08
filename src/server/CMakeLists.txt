@@ -33,3 +33,9 @@ target_link_libraries(taskmasterd
         yaml-cpp::yaml-cpp
 )
 
+option(DISABLE_DAEMON "Disable daemon feature" OFF)
+
+target_compile_definitions(taskmasterd
+        PRIVATE
+        $<$<AND:$<CONFIG:Debug>,$<BOOL:${DISABLE_DAEMON}>>:DISABLE_DAEMON>
+)

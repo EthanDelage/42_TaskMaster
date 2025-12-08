@@ -17,7 +17,9 @@ static int create_pidfile(uid_t uid, gid_t gid);
 static int daemon_start(const char *daemon_user);
 
 int main(int argc, char **argv) {
+#ifndef DISABLE_DAEMON
   int pidfile_fd = -1;
+#endif
   if (argc != 2) {
     std::cerr << "usage: " << argv[0] << " <config_file>" << std::endl;
     return 0;
@@ -26,10 +28,12 @@ int main(int argc, char **argv) {
     Logger::init("./server.log");
     ConfigParser config(argv[1]);
     Taskmaster taskmaster(config);
+#ifndef DISABLE_DAEMON
     pidfile_fd = daemon_start(DAEMON_USER);
     if (pidfile_fd == -1) {
       return EXIT_FAILURE;
     }
+#endif
     Logger::get_instance().debug("main: daemon started");
     taskmaster.loop();
   } catch (const std::exception &e) {
@@ -37,12 +41,14 @@ int main(int argc, char **argv) {
     Logger::get_instance().info("Shutting down with failure...");
     return EXIT_FAILURE;
   }
+#ifndef DISABLE_DAEMON
   Logger::get_instance().info(std::string("main: closing pidfile_fd=") +
                               std::to_string(pidfile_fd));
   close(pidfile_fd);
   Logger::get_instance().debug(std::string("main: unlink ") +
                                TASKMASTER_PIDFILE);
   unlink(TASKMASTER_PIDFILE);
+#endif
   Logger::get_instance().info("Shutting down...");
   return EXIT_SUCCESS;
 }
