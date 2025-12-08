@@ -3,11 +3,17 @@ project(taskmaster)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CXX_FLAGS -Wall -Werror -Wextra)
-if (DEBUG)
-  add_compile_definitions(DEBUG)
-  set(CXX_FLAGS ${CXX_FLAGS} -g3)
-endif()
+
+add_library(common_compile_flags INTERFACE)
+target_compile_options(common_compile_flags INTERFACE
+        -Wall
+        -Werror
+        -Wextra
+        $<$<CONFIG:Debug>:-Wno-unused>
+)
+target_compile_definitions(common_compile_flags INTERFACE
+        $<$<CONFIG:Debug>:DEBUG>
+)
 
 include_directories(include)
 

@@ -4,24 +4,23 @@ add_executable(taskmasterctl
         UnixSocketClient.cpp
 )
 
-target_compile_options(taskmasterctl
+target_link_libraries(taskmasterctl
         PRIVATE
-        ${CXX_FLAGS}
+        common_compile_flags
+        common
 )
 
-target_link_libraries(taskmasterctl PRIVATE common)
-
-if(APPLE)
+if (APPLE)
     find_library(EDIT_LIB edit REQUIRED)
     target_link_libraries(taskmasterctl PRIVATE ${EDIT_LIB})
-else()
+else ()
     find_path(READLINE_INCLUDE_DIR readline/readline.h)
     find_library(READLINE_LIBRARY readline)
 
-    if(NOT READLINE_INCLUDE_DIR OR NOT READLINE_LIBRARY)
+    if (NOT READLINE_INCLUDE_DIR OR NOT READLINE_LIBRARY)
         message(FATAL_ERROR "Could not find GNU readline")
-    endif()
+    endif ()
 
     target_include_directories(taskmasterctl PRIVATE ${READLINE_INCLUDE_DIR})
     target_link_libraries(taskmasterctl PRIVATE ${READLINE_LIBRARY})
-endif()
+endif ()
