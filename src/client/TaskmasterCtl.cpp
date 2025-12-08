@@ -125,8 +125,10 @@ void TaskmasterCtl::receive_response(bool log_to_logfile) const {
 
   ret = _socket.read(buffer, sizeof(buffer));
   if (ret == -1) {
-    Logger::get_instance().error(std::string("Failed to read response: ") +
-                                 strerror(errno));
+    if (errno != EINTR) {
+      Logger::get_instance().error(std::string("Failed to read response: ") +
+                                   strerror(errno));
+    }
     return;
   }
   if (log_to_logfile == true) {
