@@ -12,9 +12,6 @@ public:
 
   int accept_client();
   int listen(int backlog) const;
-
-private:
-  std::vector<int> _listen_fds;
 };
 
 #endif // UNIXSOCKETSERVER_HPP

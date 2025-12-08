@@ -1,4 +1,4 @@
-add_executable(server
+add_executable(taskmasterd
         main.cpp
         Process.cpp
         Taskmaster.cpp
@@ -26,10 +26,16 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(yaml-cpp)
 
-target_link_libraries(server
+target_link_libraries(taskmasterd
         PRIVATE
         common_compile_flags
         common
         yaml-cpp::yaml-cpp
 )
 
+option(DISABLE_DAEMON "Disable daemon feature" OFF)
+
+target_compile_definitions(taskmasterd
+        PRIVATE
+        $<$<AND:$<CONFIG:Debug>,$<BOOL:${DISABLE_DAEMON}>>:DISABLE_DAEMON>
+)

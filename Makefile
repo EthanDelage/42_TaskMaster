@@ -10,21 +10,24 @@ all:
 .PHONY: clean
 clean:
 	$(MAKE) -C $(BUILD_DIR) clean
+	$(MAKE) -C $(DEBUG_BUILD_DIR) clean
 
 .PHONY: fclean
 fclean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) $(DEBUG_BUILD_DIR)
 
 .PHONY: re
-re: fclean all
+re: fclean
+	$(MAKE) -C all
 
 .PHONY: debug
 debug:
-	cmake -S . -B $(DEBUG_BUILD_DIR) -DCMAKE_BUILD_TYPE=Debug
+	cmake -S . -B $(DEBUG_BUILD_DIR) -DCMAKE_BUILD_TYPE=Debug -DDISABLE_DAEMON=$(DISABLE_DAEMON)
 	cmake --build $(DEBUG_BUILD_DIR)
 
 .PHONY: re_debug
-re_debug: fclean debug
+re_debug: fclean
+	$(MAKE) -C debug
 
 .PHONY: format
 format:
