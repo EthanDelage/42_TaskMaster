@@ -3,12 +3,13 @@
 #include <common/Logger.hpp>
 #include <stdexcept>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 UnixSocketServer::UnixSocketServer(const std::string &path_name)
     : UnixSocket(path_name) {
-  if (remove(path_name.c_str()) == -1 && errno != ENOENT) {
-    Logger::get_instance().error("Failed to remove `" + path_name +
+  if (unlink(path_name.c_str()) == -1 && errno != ENOENT) {
+    Logger::get_instance().error("Failed to unlink `" + path_name +
                                  "`: " + strerror(errno));
     throw std::runtime_error(std::string("unix socket: ") + strerror(errno));
   }
@@ -17,15 +18,25 @@ UnixSocketServer::UnixSocketServer(const std::string &path_name)
         std::string("Failed to bind the server socket: ") + strerror(errno));
     throw std::runtime_error(std::string("bind: ") + strerror(errno));
   }
+  if (chmod(path_name.c_str(), 0666) == -1) {
+    Logger::get_instance().error(
+        std::string("UnixSocketServer: failed to chmod: ") + strerror(errno));
+    throw std::runtime_error(std::string("chmod: ") + strerror(errno));
+  }
   Logger::get_instance().info(
       "Server socket successfully created (fd=" + std::to_string(_fd) + ")");
 }
 
 UnixSocketServer::~UnixSocketServer() {
-  for (auto &fd : _listen_fds) {
-    if (close(fd) == -1) {
-      perror("close");
-    }
+  if (close(_fd) == -1) {
+    Logger::get_instance().error(
+        std::string(
+            "UnixSocketServer destructor: Failed to close server socket: ") +
+        strerror(errno));
+  }
+  if (unlink(_addr.sun_path) == -1) {
+    Logger::get_instance().error(std::string("Failed to unlink `") +
+                                 _addr.sun_path + "`: " + strerror(errno));
   }
 }
 
@@ -38,7 +49,6 @@ int UnixSocketServer::accept_client() {
   }
   Logger::get_instance().info("Client fd=" + std::to_string(client_fd) +
                               " connected");
-  _listen_fds.push_back(client_fd);
   return client_fd;
 }
 
