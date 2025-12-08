@@ -135,26 +135,32 @@ void Process::update_status(void) {
   _status.running = false;
   _pid = -1;
   _status.exitstatus = WEXITSTATUS(status);
-  Logger::get_instance().info(str() + ": exited with status code " +
-                              std::to_string(_status.exitstatus));
+  if (exited_unexpectedly()) {
+    Logger::get_instance().info(str() +
+                                ": exited with unexpected status code " +
+                                std::to_string(_status.exitstatus));
+  } else {
+    Logger::get_instance().info(str() + ": exited with expected status code " +
+                                std::to_string(_status.exitstatus));
+  }
+}
+
+bool Process::exited_unexpectedly() const {
+  return std::find(_process_config->exitcodes.begin(),
+                   _process_config->exitcodes.end(),
+                   _status.exitstatus) == _process_config->exitcodes.end();
 }
 
 /**
  * @brief Return true if the process needs to be autorestarted.
  **/
-bool Process::check_autorestart(void) {
+bool Process::check_autorestart() const {
   AutoRestart autorestart = _process_config->autorestart;
   if (autorestart == AutoRestart::True) {
     return true;
-  } else if (autorestart == AutoRestart::Unexpected) {
-    for (const auto it : _process_config->exitcodes) {
-      if (it == static_cast<int>(_status.exitstatus)) {
-        // If the status is found in the list of expected status
-        return false;
-      }
-    }
-    // If the status is unexpected
-    return true;
+  }
+  if (autorestart == AutoRestart::Unexpected) {
+    return exited_unexpectedly();
   }
   return false;
 }
@@ -327,8 +333,7 @@ std::ostream &operator<<(std::ostream &os, const Process &process) {
   os << "(" << process.get_pid() << ") - " << process.get_state();
   if (process.get_state() == Process::State::Stopped) {
     auto &exitcodes = process.get_process_config().exitcodes;
-    if (std::find(exitcodes.begin(), exitcodes.end(),
-                  process.get_status().exitstatus) == exitcodes.end()) {
+    if (process.exited_unexpectedly()) {
       os << " exited unexpectedly";
     }
     if (process.get_status().killed) {

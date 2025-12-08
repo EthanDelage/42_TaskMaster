@@ -39,7 +39,8 @@ public:
   void stop(int sig);
   void kill();
   void update_status(void);
-  bool check_autorestart(void);
+  bool check_autorestart() const;
+  bool exited_unexpectedly() const;
 
   void read_stdout();
   void read_stderr();

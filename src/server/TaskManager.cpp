@@ -278,8 +278,13 @@ void TaskManager::fsm_stopped_task(Process &process) {
   if (process.get_state() != process.get_previous_state()) {
     _poll_fds.remove_poll_fd(process.get_stdout_pipe()[PIPE_READ]);
     _poll_fds.remove_poll_fd(process.get_stderr_pipe()[PIPE_READ]);
-    Socket::write(_wake_up_fd, "x");
+    Socket::write(_wake_up_fd, WAKE_UP_STRING);
     process.close_outputs();
+  }
+  if (process.get_previous_state() == Process::State::Starting) {
+    if (process.get_num_retries() > process.get_process_config().startretries) {
+      Logger::get_instance().info(process.str() + ": aborted");
+    }
   }
   if (process.get_pending_command() == Process::Command::Restart) {
     return;
