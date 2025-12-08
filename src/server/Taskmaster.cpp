@@ -208,6 +208,7 @@ void Taskmaster::set_sighup_handler() {
 
 void Taskmaster::status(const std::vector<std::string> &) {
   std::ostringstream oss;
+  std::lock_guard lock(_process_pool.get_mutex());
 
   oss << _process_pool;
   _current_client->send_response(oss.str());
