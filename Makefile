@@ -18,7 +18,7 @@ fclean:
 
 .PHONY: re
 re: fclean
-	$(MAKE) -C all
+	$(MAKE) all
 
 .PHONY: debug
 debug:
@@ -27,7 +27,7 @@ debug:
 
 .PHONY: re_debug
 re_debug: fclean
-	$(MAKE) -C debug
+	$(MAKE) debug
 
 .PHONY: format
 format:
