@@ -55,7 +55,7 @@ void TaskmasterCtl::set_sigint_handler() {
 }
 
 void TaskmasterCtl::reset_sigint_handler() {
-  if (sigaction(SIGHUP, &_default_sigint_handler, nullptr) == -1) {
+  if (sigaction(SIGINT, &_default_sigint_handler, nullptr) == -1) {
     Logger::get_instance().error(std::string("sigaction: ") + strerror(errno));
     exit(EXIT_FAILURE);
   }
