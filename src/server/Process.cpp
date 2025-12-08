@@ -325,6 +325,16 @@ static void redirect_output(int pipe_fd, int output_fd) {
 
 std::ostream &operator<<(std::ostream &os, const Process &process) {
   os << "(" << process.get_pid() << ") - " << process.get_state();
+  if (process.get_state() == Process::State::Stopped) {
+    auto &exitcodes = process.get_process_config().exitcodes;
+    if (std::find(exitcodes.begin(), exitcodes.end(),
+                  process.get_status().exitstatus) == exitcodes.end()) {
+      os << " exited unexpectedly";
+    }
+    if (process.get_status().killed) {
+      os << ": killed";
+    }
+  }
   return os;
 }
 
