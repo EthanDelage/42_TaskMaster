@@ -7,7 +7,7 @@
 #include <sys/un.h>
 
 #define BACKLOG 5
-#define SOCKET_PATH_NAME "/tmp/taskmasterd"
+#define SOCKET_PATH_NAME "/tmp/taskmasterd.sock"
 
 class UnixSocket : public Socket {
 public:
