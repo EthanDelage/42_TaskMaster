@@ -314,5 +314,6 @@ static bool is_directory(std::string path) {
 void WordexpDestructor::operator()(wordexp_t *p) const {
   if (p) {
     wordfree(p);
+    delete p;
   }
 }
