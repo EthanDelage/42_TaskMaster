@@ -26,7 +26,7 @@ Process::Process(std::shared_ptr<const process_config_t> process_config)
       _num_retries(0),
       _state(State::Waiting),
       _previous_state(State::Waiting),
-      _status{.running = false, .killed = false, .exitstatus = 0},
+      _status{.running = false, .killed = false, .exitstatus = -1},
       _pending_command(Command::None),
       _stdout_pipe{-1, -1},
       _stderr_pipe{-1, -1},
@@ -331,7 +331,8 @@ static void redirect_output(int pipe_fd, int output_fd) {
 
 std::ostream &operator<<(std::ostream &os, const Process &process) {
   os << "(" << process.get_pid() << ") - " << process.get_state();
-  if (process.get_state() == Process::State::Stopped) {
+  if (process.get_state() == Process::State::Stopped &&
+      process.get_status().exitstatus != -1) {
     if (process.exited_unexpectedly()) {
       os << " exited unexpectedly";
     }
