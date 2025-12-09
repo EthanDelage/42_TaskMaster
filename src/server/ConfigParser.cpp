@@ -204,6 +204,10 @@ static void parse_numprocs(const YAML::Node &config_node,
                            process_config_t &process_config) {
   process_config.numprocs =
       config_node["numprocs"] ? config_node["numprocs"].as<unsigned long>() : 1;
+  if (process_config.numprocs == 0) {
+    throw std::runtime_error("ProgramConfig: Invalid numprocs value (" +
+                             std::to_string(process_config.numprocs) + ")");
+  }
 }
 
 static void parse_starttime(const YAML::Node &config_node,
