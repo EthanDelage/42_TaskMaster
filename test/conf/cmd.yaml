@@ -1,0 +1,12 @@
+process:
+  sleep:
+    cmd: "sleep 1"
+  echo:
+    cmd: "echo test"
+# This process will immediately exit
+  invalid_cmd:
+    cmd: "sleep test"
+# This process won't start since the command cannot be found
+#  unknown_cmd:
+#    cmd: "unknown"
+
