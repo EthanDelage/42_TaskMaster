@@ -179,7 +179,7 @@ static void parse_stderr(const YAML::Node &config_node,
 static void parse_stopsignal(const YAML::Node &config_node,
                              process_config_t &process_config) {
   if (!config_node["stopsignal"]) {
-    process_config.stopsignal = SIGSTOP;
+    process_config.stopsignal = SIGINT;
     return;
   }
   std::string signal_string = config_node["stopsignal"].as<std::string>();
