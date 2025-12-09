@@ -33,9 +33,9 @@ Taskmaster::Taskmaster(const ConfigParser &config)
   }
   _task_manager.set_wake_up_fd(_wake_up_pipe[PIPE_WRITE]);
   _poll_fds.add_poll_fd({_server_socket.get_fd(), POLLIN, 0},
-                        {PollFds::FdType::Server});
+                        {PollFds::FdType::Server, false});
   _poll_fds.add_poll_fd({_wake_up_pipe[PIPE_READ], POLLIN, 0},
-                        {PollFds::FdType::WakeUp});
+                        {PollFds::FdType::WakeUp, false});
 }
 
 void Taskmaster::loop() {
@@ -82,28 +82,29 @@ void Taskmaster::loop() {
 void Taskmaster::handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot) {
   for (size_t index = 0; index < poll_fds_snapshot.poll_fds.size(); index++) {
     const pollfd poll_fd = poll_fds_snapshot.poll_fds[index];
-    const auto [fd_type] = poll_fds_snapshot.metadata[index];
+    const auto [fd_type, stale] = poll_fds_snapshot.metadata[index];
 
-    if (poll_fd.revents != 0) {
-      Logger::get_instance().debug(
-          "fd=" + std::to_string(poll_fd.fd) +
-          " revents=" + std::to_string(poll_fd.revents));
-      switch (fd_type) {
-      case PollFds::FdType::Process:
-        handle_process_output(poll_fd.fd);
-        break;
-      case PollFds::FdType::Client:
-        handle_client_command(poll_fd);
-        break;
-      case PollFds::FdType::WakeUp:
-        handle_wake_up(poll_fd.fd);
-        break;
-      case PollFds::FdType::Server:
-        handle_connection();
-        break;
-      }
+    if (poll_fd.revents == 0) {
+      continue;
+    }
+    Logger::get_instance().debug("fd=" + std::to_string(poll_fd.fd) +
+                                 " revents=" + std::to_string(poll_fd.revents));
+    switch (fd_type) {
+    case PollFds::FdType::Process:
+      handle_process_output(poll_fd.fd);
+      break;
+    case PollFds::FdType::Client:
+      handle_client_command(poll_fd);
+      break;
+    case PollFds::FdType::WakeUp:
+      handle_wake_up(poll_fd.fd);
+      break;
+    case PollFds::FdType::Server:
+      handle_connection();
+      break;
     }
   }
+  _poll_fds.remove_stale_poll_fd();
 }
 
 void Taskmaster::handle_client_command(const pollfd &poll_fd) {
@@ -133,7 +134,8 @@ void Taskmaster::handle_connection() {
   if (client_fd == -1) {
     return;
   }
-  _poll_fds.add_poll_fd({client_fd, POLLIN, 0}, {PollFds::FdType::Client});
+  _poll_fds.add_poll_fd({client_fd, POLLIN, 0},
+                        {PollFds::FdType::Client, false});
   _client_sessions.emplace_back(client_fd);
 }
 
@@ -158,7 +160,8 @@ int32_t Taskmaster::reload_config() {
   try {
     new_pool = ProcessPool(_config.parse());
   } catch (const std::exception &e) {
-    Logger::get_instance().warn(std::string("Taskmaster::reload_config: ") + e.what());
+    Logger::get_instance().warn(std::string("Taskmaster::reload_config: ") +
+                                e.what());
     return -1;
   }
 

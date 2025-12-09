@@ -241,9 +241,9 @@ void TaskManager::fsm_starting_task(Process &process,
     }
     process.start();
     _poll_fds.add_poll_fd({process.get_stdout_pipe()[PIPE_READ], POLLIN, 0},
-                          {PollFds::FdType::Process});
+                          {PollFds::FdType::Process, false});
     _poll_fds.add_poll_fd({process.get_stderr_pipe()[PIPE_READ], POLLIN, 0},
-                          {PollFds::FdType::Process});
+                          {PollFds::FdType::Process, false});
     Socket::write(_wake_up_fd, WAKE_UP_STRING);
   }
   if (config.starttime != 0) { // Wait the process only if starttime is set
@@ -277,9 +277,8 @@ void TaskManager::fsm_exiting_task(Process &process,
 void TaskManager::fsm_stopped_task(Process &process) {
   if (process.get_state() != process.get_previous_state() &&
       process.get_previous_state() != Process::State::Waiting) {
-    _poll_fds.remove_poll_fd(process.get_stdout_pipe()[PIPE_READ]);
-    _poll_fds.remove_poll_fd(process.get_stderr_pipe()[PIPE_READ]);
-    process.close_outputs();
+    _poll_fds.stale_poll_fd(process.get_stdout_pipe()[PIPE_READ]);
+    _poll_fds.stale_poll_fd(process.get_stderr_pipe()[PIPE_READ]);
     Socket::write(_wake_up_fd, WAKE_UP_STRING);
   }
   if (process.get_previous_state() == Process::State::Starting) {

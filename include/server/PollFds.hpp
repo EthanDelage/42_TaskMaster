@@ -15,6 +15,7 @@ public:
 
   typedef struct metadata_s {
     FdType type;
+    bool stale;
   } metadata_t;
 
   typedef struct snapshot_s {
@@ -26,6 +27,8 @@ public:
 
   void add_poll_fd(pollfd fd, metadata_t metadata);
   void remove_poll_fd(int fd);
+  void remove_stale_poll_fd();
+  void stale_poll_fd(int fd);
 
   snapshot_t get_snapshot();
 

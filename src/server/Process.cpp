@@ -348,7 +348,7 @@ std::ostream &operator<<(std::ostream &os, const Process &process) {
     if (process.get_num_retries() > process.get_process_config().startretries) {
       os << " - aborted";
     }
-      }
+  }
   return os;
 }
 

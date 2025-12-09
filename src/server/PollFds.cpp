@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <unistd.h>
 
 PollFds::PollFds() {}
 
@@ -36,6 +37,35 @@ void PollFds::remove_poll_fd(const int fd) {
   const long index = std::distance(_poll_fds.begin(), it);
   _poll_fds.erase(it);
   _metadata.erase(_metadata.begin() + index);
+}
+
+void PollFds::remove_stale_poll_fd() {
+  std::lock_guard lock(_mutex);
+  for (size_t index = 0; index < _poll_fds.size();) {
+    const pollfd poll_fd = _poll_fds[index];
+    const auto [fd_type, stale] = _metadata[index];
+    if (stale) {
+      close(poll_fd.fd);
+      _poll_fds.erase(_poll_fds.begin() + index);
+      _metadata.erase(_metadata.begin() + index);
+    } else {
+      index++;
+    }
+  }
+}
+
+void PollFds::stale_poll_fd(int fd) {
+  std::lock_guard lock(_mutex);
+  const auto it =
+      std::find_if(_poll_fds.begin(), _poll_fds.end(),
+                   [fd](pollfd poll_fd) { return fd == poll_fd.fd; });
+  if (it == _poll_fds.end()) {
+    throw std::invalid_argument("stale_poll_fd(): invalid fd=" +
+                                std::to_string(fd));
+  }
+  Logger::get_instance().info("stale_poll_fd: Stale fd=" + std::to_string(fd));
+  const long index = std::distance(_poll_fds.begin(), it);
+  _metadata[index].stale = true;
 }
 
 PollFds::snapshot_t PollFds::get_snapshot() {
