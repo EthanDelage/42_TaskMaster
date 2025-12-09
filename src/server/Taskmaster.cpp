@@ -56,7 +56,7 @@ void Taskmaster::loop() {
       continue;
     }
     if (!_task_manager.is_thread_alive()) {
-      Logger::get_instance().debug(
+      Logger::get_instance().warn(
           "Taskmaster::loop(): TaskManager thread is no longer active");
       return;
     }
@@ -73,6 +73,7 @@ void Taskmaster::loop() {
       sighup_received_g = 0;
     }
   }
+  Logger::get_instance().error("TEST");
 }
 
 void Taskmaster::handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot) {
@@ -84,10 +85,6 @@ void Taskmaster::handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot) {
       Logger::get_instance().debug(
           "fd=" + std::to_string(poll_fd.fd) +
           " revents=" + std::to_string(poll_fd.revents));
-      if ((poll_fd.revents & POLLNVAL) != 0) {
-        _poll_fds.remove_poll_fd(poll_fd.fd);
-        continue;
-      }
       switch (fd_type) {
       case PollFds::FdType::Process:
         handle_process_output(poll_fd.fd);
