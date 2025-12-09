@@ -1,0 +1,11 @@
+process:
+  exitcodes_good:
+    cmd: "sleep 1"
+    autorestart: unexpected
+    exitcodes:
+      - 1
+  exitcodes_bad: # Comment this to test exitcodes directive
+    cmd: "sleep 1"
+    autorestart: unexpected
+    exitcodes:
+      - -1
