@@ -340,12 +340,15 @@ std::ostream &operator<<(std::ostream &os, const Process &process) {
   if (process.get_state() == Process::State::Stopped &&
       process.get_status().exitstatus != -1) {
     if (process.exited_unexpectedly()) {
-      os << " exited unexpectedly";
+      os << " - exited unexpectedly";
     }
     if (process.get_status().killed) {
-      os << ": killed";
+      os << " - killed";
     }
-  }
+    if (process.get_num_retries() > process.get_process_config().startretries) {
+      os << " - aborted";
+    }
+      }
   return os;
 }
 
