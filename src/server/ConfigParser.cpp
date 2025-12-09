@@ -285,6 +285,7 @@ static void parse_env(const YAML::Node &config_node,
 static void parse_exitcodes(const YAML::Node &config_node,
                             process_config_t &process_config) {
   if (!config_node["exitcodes"]) {
+    process_config.exitcodes.push_back(0);
     return;
   }
   for (const auto &entry : config_node["exitcodes"]) {
