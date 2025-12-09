@@ -279,8 +279,8 @@ void TaskManager::fsm_stopped_task(Process &process) {
       process.get_previous_state() != Process::State::Waiting) {
     _poll_fds.remove_poll_fd(process.get_stdout_pipe()[PIPE_READ]);
     _poll_fds.remove_poll_fd(process.get_stderr_pipe()[PIPE_READ]);
-    Socket::write(_wake_up_fd, WAKE_UP_STRING);
     process.close_outputs();
+    Socket::write(_wake_up_fd, WAKE_UP_STRING);
   }
   if (process.get_previous_state() == Process::State::Starting) {
     if (process.get_num_retries() > process.get_process_config().startretries) {

@@ -7,6 +7,7 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 #include <sstream>
+#include <unistd.h>
 
 volatile sig_atomic_t sigint_received_g = 0;
 
@@ -20,6 +21,8 @@ TaskmasterCtl::TaskmasterCtl(std::string prompt_string)
   _usage_max_len = get_usage_max_len();
   _socket.connect();
 }
+
+TaskmasterCtl::~TaskmasterCtl() { close(_socket.get_fd()); }
 
 void TaskmasterCtl::loop() {
   char *input;

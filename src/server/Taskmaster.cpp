@@ -114,9 +114,7 @@ void Taskmaster::handle_client_command(const pollfd &poll_fd) {
     throw std::runtime_error("handle_client_command(): invalid fd");
   }
 
-  if (poll_fd.revents & (POLLERR | POLLHUP)) {
-    disconnect_client(poll_fd.fd);
-  } else if (poll_fd.revents & POLLIN) {
+  if (poll_fd.revents & POLLIN) {
     try {
       cmd_line = it->recv_command();
     } catch (const std::runtime_error &e) {
@@ -125,6 +123,8 @@ void Taskmaster::handle_client_command(const pollfd &poll_fd) {
     }
     _current_client = &(*it);
     _command_manager.run_command(cmd_line);
+  } else {
+    disconnect_client(poll_fd.fd);
   }
 }
 
@@ -191,6 +191,7 @@ void Taskmaster::disconnect_client(int fd) {
                               " disconnected");
   remove_client_session(fd);
   _poll_fds.remove_poll_fd(fd);
+  close(fd);
 }
 
 void Taskmaster::remove_client_session(int fd) {

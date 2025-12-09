@@ -9,6 +9,13 @@ PollFds::PollFds() {}
 
 void PollFds::add_poll_fd(pollfd fd, metadata_t metadata) {
   std::lock_guard lock(_mutex);
+  const auto it =
+      std::find_if(_poll_fds.begin(), _poll_fds.end(),
+                   [fd](pollfd poll_fd) { return fd.fd == poll_fd.fd; });
+  if (it != _poll_fds.end()) {
+    Logger::get_instance().warn("add_poll_fd: fd=" + std::to_string(fd.fd) +
+                                " already in _poll_fds");
+  }
   Logger::get_instance().info("Add fd=" + std::to_string(fd.fd) +
                               " to poll_fds");
   _poll_fds.emplace_back(fd);

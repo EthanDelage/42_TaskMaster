@@ -9,7 +9,6 @@ class Socket {
 
 public:
   explicit Socket(int fd);
-  ~Socket();
 
   ssize_t read(char *buffer, size_t size) const;
   ssize_t write(const std::string &buffer) const;
