@@ -36,7 +36,7 @@ private:
   void handle_connection();
   void handle_wake_up(int fd);
   void handle_process_output(int fd);
-  void reload_config();
+  int32_t reload_config();
   void disconnect_client(int fd);
   void request_command(const std::vector<std::string> &args,
                        Process::Command command);

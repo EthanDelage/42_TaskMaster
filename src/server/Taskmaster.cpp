@@ -62,12 +62,16 @@ void Taskmaster::loop() {
     }
     handle_poll_fds(poll_fds_snapshot);
     if (sighup_received_g) {
-      reload_config();
+      int res = reload_config();
       for (auto &client_session : _client_sessions) {
         if (client_session.get_reload_request()) {
-          // TODO: update the reload response message
-          client_session.send_response("successful reload\n");
-          client_session.set_reload_request(false);
+          if (res == 0) {
+            client_session.send_response("successful reload\n");
+            client_session.set_reload_request(false);
+          } else {
+            client_session.send_response("reload failed\n");
+            client_session.set_reload_request(false);
+          }
         }
       }
       sighup_received_g = 0;
@@ -149,8 +153,14 @@ void Taskmaster::handle_process_output(int fd) {
     }
   }
 }
-void Taskmaster::reload_config() {
-  ProcessPool new_pool(_config.parse());
+int32_t Taskmaster::reload_config() {
+  ProcessPool new_pool;
+  try {
+    new_pool = ProcessPool(_config.parse());
+  } catch (const std::exception &e) {
+    Logger::get_instance().warn(std::string("Taskmaster::reload_config: ") + e.what());
+    return -1;
+  }
 
   std::lock_guard lock(_process_pool.get_mutex());
   Logger::get_instance().info("Reloading config...");
@@ -173,6 +183,7 @@ void Taskmaster::reload_config() {
   }
   Logger::get_instance().info("Config successfully reloaded");
   _process_pool = std::move(new_pool);
+  return 0;
 }
 
 void Taskmaster::disconnect_client(int fd) {
