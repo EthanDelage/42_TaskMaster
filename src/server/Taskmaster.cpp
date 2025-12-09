@@ -73,7 +73,6 @@ void Taskmaster::loop() {
       sighup_received_g = 0;
     }
   }
-  Logger::get_instance().error("TEST");
 }
 
 void Taskmaster::handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot) {
