@@ -4,10 +4,10 @@
 #include "common/socket/Socket.hpp"
 #include "server/ConfigParser.hpp"
 #include <chrono>
+#include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <signal.h>
 extern "C" {
 #include <fcntl.h>
 #include <stdlib.h>
@@ -197,6 +197,12 @@ void Process::detach_client(int fd) {
     _attached_client.erase(client_it);
     Logger::get_instance().info("Client fd=" + std::to_string(fd) +
                                 " detached to `" + _process_config->name + '`');
+  }
+}
+
+void Process::send_message_to_client(const std::string &message) {
+  for (auto client_fd : _attached_client) {
+    Socket::write(client_fd, message);
   }
 }
 

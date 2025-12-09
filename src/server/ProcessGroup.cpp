@@ -18,6 +18,7 @@ void ProcessGroup::stop(const int sig) {
   for (Process &process : _process_vector) {
     if (process.get_status().running) {
       process.stop(sig);
+      process.send_message_to_client(process.str() + " has stopped\n");
     }
   }
 }

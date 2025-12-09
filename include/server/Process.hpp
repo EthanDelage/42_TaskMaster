@@ -46,6 +46,7 @@ public:
   void read_stderr();
   void attach_client(int fd);
   void detach_client(int fd);
+  void send_message_to_client(const std::string &message);
   void close_outputs();
   std::string str() const;
 
