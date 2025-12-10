@@ -345,7 +345,7 @@ std::ostream &operator<<(std::ostream &os, const Process &process) {
     if (process.get_status().killed) {
       os << " - killed";
     }
-    if (process.get_num_retries() > process.get_process_config().startretries) {
+    if (process.get_num_retries() > process.get_process_config().startretries && process.get_process_config().startretries != 0) {
       os << " - aborted";
     }
   }
