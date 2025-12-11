@@ -1,6 +1,12 @@
 process:
-  test1:
-    cmd: "echo test1"
-  test2:
-    cmd: "echo test2"
+  autostart_true:
+    cmd: "echo autostart_true"
+    stdout: test/out/autostart_autostart_true.out
+  autostart_false:
+    cmd: "echo autostart_false"
     autostart: false
+    stdout: test/out/autostart_autostart_false.out
+# Uncomment to test parsing
+#  autostart_faulty:
+#    cmd: "echo test2"
+#    autostart: test

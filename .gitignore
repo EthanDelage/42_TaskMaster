@@ -56,3 +56,5 @@ venv/
 test/bin/
 
 *.log
+*.err
+

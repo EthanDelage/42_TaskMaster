@@ -5,8 +5,6 @@
 
 Socket::Socket(const int fd) : _fd(fd) {}
 
-Socket::~Socket() { close(_fd); }
-
 ssize_t Socket::read(char *buffer, size_t size) const {
   return ::read(_fd, buffer, size);
 }

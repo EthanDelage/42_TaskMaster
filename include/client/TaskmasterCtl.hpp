@@ -20,6 +20,7 @@ struct client_command_s {
 class TaskmasterCtl {
 public:
   explicit TaskmasterCtl(std::string prompt_string);
+  ~TaskmasterCtl();
   void loop();
   void run_command(const std::string &command_line);
 

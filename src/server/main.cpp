@@ -7,6 +7,7 @@
 #include <iostream>
 #include <pwd.h>
 #include <sys/fcntl.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -27,14 +28,17 @@ int main(int argc, char **argv) {
   try {
     Logger::init("./server.log");
     ConfigParser config(argv[1]);
-    Taskmaster taskmaster(config);
+    (void)config.parse();
 #ifndef DISABLE_DAEMON
+    Logger::get_instance().info("Starting Taskmasterd ...");
+    std::cout << "Starting Taskmasterd ..." << std::endl;
     pidfile_fd = daemon_start(DAEMON_USER);
     if (pidfile_fd == -1) {
       return EXIT_FAILURE;
     }
-#endif
     Logger::get_instance().debug("main: daemon started");
+#endif
+    Taskmaster taskmaster(config);
     taskmaster.loop();
   } catch (const std::exception &e) {
     Logger::get_instance().error(e.what());
@@ -62,12 +66,6 @@ static int daemon_start(const char *daemon_user) {
     return -1;
   }
 
-  if (daemon() < 0) {
-    Logger::get_instance().error(
-        std::string("daemon_start: failed to daemon: ") + strerror(errno));
-    return -1;
-  }
-
   struct passwd *pw = getpwnam(daemon_user);
   if (!pw) {
     Logger::get_instance().error(std::string(
@@ -80,6 +78,12 @@ static int daemon_start(const char *daemon_user) {
 
   int pidfd = create_pidfile(uid, gid);
   if (pidfd < 0) {
+    return -1;
+  }
+
+  if (daemon() < 0) {
+    Logger::get_instance().error(
+        std::string("daemon_start: failed to daemon: ") + strerror(errno));
     return -1;
   }
 

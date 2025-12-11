@@ -1,0 +1,11 @@
+process:
+  starttime_abort:
+    cmd: "sleep 1"
+    starttime: 2
+  starttime_success:
+    cmd: "sleep 2"
+    starttime: 1
+# Uncomment this to test starttime parsing
+#  starttime_bad:
+#    cmd: "sleep 1"
+#    starttime: -1

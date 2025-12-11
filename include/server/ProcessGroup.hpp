@@ -11,6 +11,8 @@ class ProcessGroup {
 
 public:
   explicit ProcessGroup(process_config_t &&config);
+  ~ProcessGroup();
+
   process_config_t const &get_process_config() const;
 
   void stop(int sig);
@@ -27,6 +29,8 @@ public:
 private:
   std::vector<Process> _process_vector;
   std::shared_ptr<const process_config_t> _config;
+  int _stdout_fd;
+  int _stderr_fd;
 };
 
 std::ostream &operator<<(std::ostream &os, const ProcessGroup &process_group);

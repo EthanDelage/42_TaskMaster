@@ -33,9 +33,9 @@ Taskmaster::Taskmaster(const ConfigParser &config)
   }
   _task_manager.set_wake_up_fd(_wake_up_pipe[PIPE_WRITE]);
   _poll_fds.add_poll_fd({_server_socket.get_fd(), POLLIN, 0},
-                        {PollFds::FdType::Server});
+                        {PollFds::FdType::Server, false});
   _poll_fds.add_poll_fd({_wake_up_pipe[PIPE_READ], POLLIN, 0},
-                        {PollFds::FdType::WakeUp});
+                        {PollFds::FdType::WakeUp, false});
 }
 
 void Taskmaster::loop() {
@@ -56,18 +56,22 @@ void Taskmaster::loop() {
       continue;
     }
     if (!_task_manager.is_thread_alive()) {
-      Logger::get_instance().debug(
+      Logger::get_instance().warn(
           "Taskmaster::loop(): TaskManager thread is no longer active");
       return;
     }
     handle_poll_fds(poll_fds_snapshot);
     if (sighup_received_g) {
-      reload_config();
+      int res = reload_config();
       for (auto &client_session : _client_sessions) {
         if (client_session.get_reload_request()) {
-          // TODO: update the reload response message
-          client_session.send_response("successful reload\n");
-          client_session.set_reload_request(false);
+          if (res == 0) {
+            client_session.send_response("successful reload\n");
+            client_session.set_reload_request(false);
+          } else {
+            client_session.send_response("reload failed\n");
+            client_session.set_reload_request(false);
+          }
         }
       }
       sighup_received_g = 0;
@@ -78,30 +82,26 @@ void Taskmaster::loop() {
 void Taskmaster::handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot) {
   for (size_t index = 0; index < poll_fds_snapshot.poll_fds.size(); index++) {
     const pollfd poll_fd = poll_fds_snapshot.poll_fds[index];
-    const auto [fd_type] = poll_fds_snapshot.metadata[index];
+    const auto [fd_type, stale] = poll_fds_snapshot.metadata[index];
 
-    if (poll_fd.revents != 0) {
-      Logger::get_instance().debug(
-          "fd=" + std::to_string(poll_fd.fd) +
-          " revents=" + std::to_string(poll_fd.revents));
-      if ((poll_fd.revents & POLLNVAL) != 0) {
-        _poll_fds.remove_poll_fd(poll_fd.fd);
-        continue;
-      }
-      switch (fd_type) {
-      case PollFds::FdType::Process:
-        handle_process_output(poll_fd.fd);
-        break;
-      case PollFds::FdType::Client:
-        handle_client_command(poll_fd);
-        break;
-      case PollFds::FdType::WakeUp:
-        handle_wake_up(poll_fd.fd);
-        break;
-      case PollFds::FdType::Server:
-        handle_connection();
-        break;
-      }
+    if (poll_fd.revents == 0) {
+      continue;
+    }
+    Logger::get_instance().debug("fd=" + std::to_string(poll_fd.fd) +
+                                 " revents=" + std::to_string(poll_fd.revents));
+    switch (fd_type) {
+    case PollFds::FdType::Process:
+      handle_process_output(poll_fd, stale);
+      break;
+    case PollFds::FdType::Client:
+      handle_client_command(poll_fd);
+      break;
+    case PollFds::FdType::WakeUp:
+      handle_wake_up(poll_fd.fd);
+      break;
+    case PollFds::FdType::Server:
+      handle_connection();
+      break;
     }
   }
 }
@@ -114,9 +114,7 @@ void Taskmaster::handle_client_command(const pollfd &poll_fd) {
     throw std::runtime_error("handle_client_command(): invalid fd");
   }
 
-  if (poll_fd.revents & (POLLERR | POLLHUP)) {
-    disconnect_client(poll_fd.fd);
-  } else if (poll_fd.revents & POLLIN) {
+  if (poll_fd.revents & POLLIN) {
     try {
       cmd_line = it->recv_command();
     } catch (const std::runtime_error &e) {
@@ -125,6 +123,8 @@ void Taskmaster::handle_client_command(const pollfd &poll_fd) {
     }
     _current_client = &(*it);
     _command_manager.run_command(cmd_line);
+  } else {
+    disconnect_client(poll_fd.fd);
   }
 }
 
@@ -133,7 +133,8 @@ void Taskmaster::handle_connection() {
   if (client_fd == -1) {
     return;
   }
-  _poll_fds.add_poll_fd({client_fd, POLLIN, 0}, {PollFds::FdType::Client});
+  _poll_fds.add_poll_fd({client_fd, POLLIN, 0},
+                        {PollFds::FdType::Client, false});
   _client_sessions.emplace_back(client_fd);
 }
 
@@ -142,19 +143,36 @@ void Taskmaster::handle_wake_up(int fd) {
   Socket::read(fd, buffer, SOCKET_BUFFER_SIZE);
 }
 
-void Taskmaster::handle_process_output(int fd) {
-  for (auto &[name, processes] : _process_pool) {
-    for (auto &process : processes) {
-      if (fd == process.get_stdout_pipe()[PIPE_READ]) {
-        process.read_stdout();
-      } else if (fd == process.get_stderr_pipe()[PIPE_READ]) {
-        process.read_stderr();
+void Taskmaster::handle_process_output(const pollfd &poll_fd, bool stale) {
+  ssize_t ret = 0;
+  if ((poll_fd.revents & POLLIN) != 0) {
+    std::lock_guard lock(_process_pool.get_mutex());
+    for (auto &[name, processes] : _process_pool) {
+      for (auto &process : processes) {
+        if (poll_fd.fd == process.get_stdout_pipe()[PIPE_READ]) {
+          ret = process.read_stdout();
+        } else if (poll_fd.fd == process.get_stderr_pipe()[PIPE_READ]) {
+          ret = process.read_stderr();
+        }
       }
     }
   }
+  if (stale && ret <= 0) {
+    Logger::get_instance().warn(__func__ + std::string(" closing poll_fd=") +
+                                std::to_string(poll_fd.fd));
+    close(poll_fd.fd);
+    _poll_fds.remove_poll_fd(poll_fd.fd);
+  }
 }
-void Taskmaster::reload_config() {
-  ProcessPool new_pool(_config.parse());
+int32_t Taskmaster::reload_config() {
+  ProcessPool new_pool;
+  try {
+    new_pool = ProcessPool(_config.parse());
+  } catch (const std::exception &e) {
+    Logger::get_instance().warn(std::string("Taskmaster::reload_config: ") +
+                                e.what());
+    return -1;
+  }
 
   std::lock_guard lock(_process_pool.get_mutex());
   Logger::get_instance().info("Reloading config...");
@@ -177,6 +195,7 @@ void Taskmaster::reload_config() {
   }
   Logger::get_instance().info("Config successfully reloaded");
   _process_pool = std::move(new_pool);
+  return 0;
 }
 
 void Taskmaster::disconnect_client(int fd) {
@@ -184,6 +203,7 @@ void Taskmaster::disconnect_client(int fd) {
                               " disconnected");
   remove_client_session(fd);
   _poll_fds.remove_poll_fd(fd);
+  close(fd);
 }
 
 void Taskmaster::remove_client_session(int fd) {
@@ -208,6 +228,7 @@ void Taskmaster::set_sighup_handler() {
 
 void Taskmaster::status(const std::vector<std::string> &) {
   std::ostringstream oss;
+  std::lock_guard lock(_process_pool.get_mutex());
 
   oss << _process_pool;
   _current_client->send_response(oss.str());

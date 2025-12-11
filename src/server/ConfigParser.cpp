@@ -179,7 +179,7 @@ static void parse_stderr(const YAML::Node &config_node,
 static void parse_stopsignal(const YAML::Node &config_node,
                              process_config_t &process_config) {
   if (!config_node["stopsignal"]) {
-    process_config.stopsignal = SIGSTOP;
+    process_config.stopsignal = SIGINT;
     return;
   }
   std::string signal_string = config_node["stopsignal"].as<std::string>();
@@ -204,6 +204,10 @@ static void parse_numprocs(const YAML::Node &config_node,
                            process_config_t &process_config) {
   process_config.numprocs =
       config_node["numprocs"] ? config_node["numprocs"].as<unsigned long>() : 1;
+  if (process_config.numprocs == 0) {
+    throw std::runtime_error("ProgramConfig: Invalid numprocs value (" +
+                             std::to_string(process_config.numprocs) + ")");
+  }
 }
 
 static void parse_starttime(const YAML::Node &config_node,
@@ -281,6 +285,7 @@ static void parse_env(const YAML::Node &config_node,
 static void parse_exitcodes(const YAML::Node &config_node,
                             process_config_t &process_config) {
   if (!config_node["exitcodes"]) {
+    process_config.exitcodes.push_back(0);
     return;
   }
   for (const auto &entry : config_node["exitcodes"]) {
@@ -314,5 +319,6 @@ static bool is_directory(std::string path) {
 void WordexpDestructor::operator()(wordexp_t *p) const {
   if (p) {
     wordfree(p);
+    delete p;
   }
 }

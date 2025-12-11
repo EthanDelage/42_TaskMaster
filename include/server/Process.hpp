@@ -32,19 +32,21 @@ public:
     None,
   };
 
-  Process(std::shared_ptr<const process_config_t> process_config);
-  ~Process();
+  Process(std::shared_ptr<const process_config_t> process_config, int stdout_fd,
+          int stderr_fd);
 
   void start();
   void stop(int sig);
   void kill();
   void update_status(void);
-  bool check_autorestart(void);
+  bool check_autorestart() const;
+  bool exited_unexpectedly() const;
 
-  void read_stdout();
-  void read_stderr();
+  ssize_t read_stdout();
+  ssize_t read_stderr();
   void attach_client(int fd);
   void detach_client(int fd);
+  void send_message_to_client(const std::string &message);
   void close_outputs();
   std::string str() const;
 
@@ -72,7 +74,7 @@ private:
   void setup_workingdir() const;
   void setup_umask() const;
   void setup_outputs();
-  void forward_output(int read_fd, int output_fd);
+  ssize_t forward_output(int read_fd, int output_fd);
 
   std::shared_ptr<const process_config_t> _process_config;
   pid_t _pid;

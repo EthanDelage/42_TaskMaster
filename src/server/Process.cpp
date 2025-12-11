@@ -4,10 +4,10 @@
 #include "common/socket/Socket.hpp"
 #include "server/ConfigParser.hpp"
 #include <chrono>
+#include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <signal.h>
 extern "C" {
 #include <fcntl.h>
 #include <stdlib.h>
@@ -20,42 +20,22 @@ static void redirect_output(int pipe_fd, int output_fd);
 
 extern char **environ; // envp
 
-Process::Process(std::shared_ptr<const process_config_t> process_config)
+Process::Process(std::shared_ptr<const process_config_t> process_config,
+                 int stdout_fd, int stderr_fd)
     : _process_config(process_config),
       _pid(-1),
       _num_retries(0),
       _state(State::Waiting),
       _previous_state(State::Waiting),
-      _status{.running = false, .killed = false, .exitstatus = 0},
+      _status{.running = false, .killed = false, .exitstatus = -1},
       _pending_command(Command::None),
       _stdout_pipe{-1, -1},
       _stderr_pipe{-1, -1},
-      _stdout_fd(-1),
-      _stderr_fd(-1) {
-  std::string stdout_path = _process_config->stdout;
-  _stdout_fd = stdout_path.empty() ? open("/dev/null", O_WRONLY)
-                                   : open(stdout_path.c_str(),
-                                          O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  if (_stdout_fd == -1) {
-    throw std::runtime_error(std::string("open") + strerror(errno));
-  }
-  std::string stderr_path = _process_config->stderr;
-  _stderr_fd = stderr_path.empty() ? open("/dev/null", O_WRONLY)
-                                   : open(stderr_path.c_str(),
-                                          O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  if (_stderr_fd == -1) {
-    throw std::runtime_error(std::string("open") + strerror(errno));
-  }
-}
-
-Process::~Process() {
-  close(_stdout_pipe[PIPE_READ]);
-  close(_stderr_pipe[PIPE_READ]);
-  close(_stdout_fd);
-  close(_stderr_fd);
-}
+      _stdout_fd(stdout_fd),
+      _stderr_fd(stderr_fd) {}
 
 void Process::start() {
+  Logger::get_instance().info(str() + ": Starting...");
   if (pipe(_stdout_pipe) == -1) {
     throw std::runtime_error("Error: Process() failed to create stdout pipe");
   }
@@ -135,36 +115,42 @@ void Process::update_status(void) {
   _status.running = false;
   _pid = -1;
   _status.exitstatus = WEXITSTATUS(status);
-  Logger::get_instance().info(str() + ": exited with status code " +
-                              std::to_string(_status.exitstatus));
+  if (exited_unexpectedly()) {
+    Logger::get_instance().info(str() +
+                                ": exited with unexpected status code " +
+                                std::to_string(_status.exitstatus));
+  } else {
+    Logger::get_instance().info(str() + ": exited with expected status code " +
+                                std::to_string(_status.exitstatus));
+  }
+}
+
+bool Process::exited_unexpectedly() const {
+  return std::find(_process_config->exitcodes.begin(),
+                   _process_config->exitcodes.end(),
+                   _status.exitstatus) == _process_config->exitcodes.end();
 }
 
 /**
  * @brief Return true if the process needs to be autorestarted.
  **/
-bool Process::check_autorestart(void) {
+bool Process::check_autorestart() const {
   AutoRestart autorestart = _process_config->autorestart;
   if (autorestart == AutoRestart::True) {
     return true;
-  } else if (autorestart == AutoRestart::Unexpected) {
-    for (const auto it : _process_config->exitcodes) {
-      if (it == static_cast<int>(_status.exitstatus)) {
-        // If the status is found in the list of expected status
-        return false;
-      }
-    }
-    // If the status is unexpected
-    return true;
+  }
+  if (autorestart == AutoRestart::Unexpected) {
+    return exited_unexpectedly();
   }
   return false;
 }
 
-void Process::read_stdout() {
-  forward_output(_stdout_pipe[PIPE_READ], _stdout_fd);
+ssize_t Process::read_stdout() {
+  return forward_output(_stdout_pipe[PIPE_READ], _stdout_fd);
 }
 
-void Process::read_stderr() {
-  forward_output(_stderr_pipe[PIPE_READ], _stderr_fd);
+ssize_t Process::read_stderr() {
+  return forward_output(_stderr_pipe[PIPE_READ], _stderr_fd);
 }
 
 void Process::attach_client(int fd) {
@@ -191,6 +177,12 @@ void Process::detach_client(int fd) {
     _attached_client.erase(client_it);
     Logger::get_instance().info("Client fd=" + std::to_string(fd) +
                                 " detached to `" + _process_config->name + '`');
+  }
+}
+
+void Process::send_message_to_client(const std::string &message) {
+  for (auto client_fd : _attached_client) {
+    Socket::write(client_fd, message);
   }
 }
 
@@ -298,23 +290,25 @@ void Process::setup_outputs() {
  *
  * @param read_fd   File descriptor from which to read (pipe read end).
  * @param output_fd File descriptor to forward the data to.
+ * @return the number of bytes read
  *
  * @note If the read operation fails, the function prints an error using
  * perror() and returns without attempting to forward any data.
  */
-void Process::forward_output(int read_fd, int output_fd) {
+ssize_t Process::forward_output(int read_fd, int output_fd) {
   char buffer[SOCKET_BUFFER_SIZE];
   ssize_t ret;
 
   ret = Socket::read(read_fd, buffer, SOCKET_BUFFER_SIZE);
   if (ret == -1) {
     perror("read");
-    return;
+    return ret;
   }
   Socket::write(output_fd, buffer, ret);
   for (auto client : _attached_client) {
     Socket::write(client, buffer, ret);
   }
+  return ret;
 }
 
 static void redirect_output(int pipe_fd, int output_fd) {
@@ -325,6 +319,19 @@ static void redirect_output(int pipe_fd, int output_fd) {
 
 std::ostream &operator<<(std::ostream &os, const Process &process) {
   os << "(" << process.get_pid() << ") - " << process.get_state();
+  if (process.get_state() == Process::State::Stopped &&
+      process.get_status().exitstatus != -1) {
+    if (process.exited_unexpectedly()) {
+      os << " - exited unexpectedly";
+    }
+    if (process.get_status().killed) {
+      os << " - killed";
+    }
+    if (process.get_num_retries() > process.get_process_config().startretries &&
+        process.get_process_config().startretries != 0) {
+      os << " - aborted";
+    }
+  }
   return os;
 }
 

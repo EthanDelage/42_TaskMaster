@@ -1,0 +1,13 @@
+process:
+  workingdir:
+    cmd: "pwd"
+    stdout: test/out/workingdir.out
+    workingdir: /home
+  workingdir_relative:
+    cmd: "pwd"
+    stdout: test/out/workingdir_relative.out
+    workingdir: ../
+#  workingdir_bad_location:
+#    cmd: "pwd"
+#    stdout: test/out/workingdir.out
+#    workingdir: /home/users

@@ -7,6 +7,7 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 #include <sstream>
+#include <unistd.h>
 
 volatile sig_atomic_t sigint_received_g = 0;
 
@@ -20,6 +21,8 @@ TaskmasterCtl::TaskmasterCtl(std::string prompt_string)
   _usage_max_len = get_usage_max_len();
   _socket.connect();
 }
+
+TaskmasterCtl::~TaskmasterCtl() { close(_socket.get_fd()); }
 
 void TaskmasterCtl::loop() {
   char *input;
@@ -55,7 +58,7 @@ void TaskmasterCtl::set_sigint_handler() {
 }
 
 void TaskmasterCtl::reset_sigint_handler() {
-  if (sigaction(SIGHUP, &_default_sigint_handler, nullptr) == -1) {
+  if (sigaction(SIGINT, &_default_sigint_handler, nullptr) == -1) {
     Logger::get_instance().error(std::string("sigaction: ") + strerror(errno));
     exit(EXIT_FAILURE);
   }
@@ -125,8 +128,10 @@ void TaskmasterCtl::receive_response(bool log_to_logfile) const {
 
   ret = _socket.read(buffer, sizeof(buffer));
   if (ret == -1) {
-    Logger::get_instance().error(std::string("Failed to read response: ") +
-                                 strerror(errno));
+    if (errno != EINTR) {
+      Logger::get_instance().error(std::string("Failed to read response: ") +
+                                   strerror(errno));
+    }
     return;
   }
   if (log_to_logfile == true) {

@@ -1,0 +1,13 @@
+process:
+# This command start 10 processes, you should check if every command responds correctly
+  numprocs_10:
+    cmd: "echo test"
+    numprocs: 10
+    stdout: test/out/numprocs_numprocs_10.out
+#  numprocs_100:
+#    cmd: "sleep 1"
+#    numprocs: 100
+# This config should not work
+#  numprocs_0:
+#    cmd: "sleep 100"
+#    numprocs: 0
