@@ -4,8 +4,14 @@ process:
     autorestart: unexpected
     exitcodes:
       - 1
-  exitcodes_bad: # Comment this to test exitcodes directive
-    cmd: "sleep 1"
-    autorestart: unexpected
-    exitcodes:
-      - -1
+# Uncomment this to test parsing
+#  exitcodes_bad:
+#    cmd: "sleep 1"
+#    autorestart: unexpected
+#    exitcodes:
+#      - -1
+#  exitcodes_bad2:
+#    cmd: "sleep 1"
+#    autorestart: unexpected
+#    exitcodes:
+#      - 256

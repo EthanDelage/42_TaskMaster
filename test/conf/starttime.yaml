@@ -5,6 +5,7 @@ process:
   starttime_success:
     cmd: "sleep 2"
     starttime: 1
-#  starttime_bad: # Comment this to test starttime directive
+# Uncomment this to test starttime parsing
+#  starttime_bad:
 #    cmd: "sleep 1"
 #    starttime: -1
