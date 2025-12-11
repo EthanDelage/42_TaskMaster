@@ -39,21 +39,6 @@ void PollFds::remove_poll_fd(const int fd) {
   _metadata.erase(_metadata.begin() + index);
 }
 
-void PollFds::remove_stale_poll_fd() {
-  std::lock_guard lock(_mutex);
-  for (size_t index = 0; index < _poll_fds.size();) {
-    const pollfd poll_fd = _poll_fds[index];
-    const auto [fd_type, stale] = _metadata[index];
-    if (stale) {
-      close(poll_fd.fd);
-      _poll_fds.erase(_poll_fds.begin() + index);
-      _metadata.erase(_metadata.begin() + index);
-    } else {
-      index++;
-    }
-  }
-}
-
 void PollFds::stale_poll_fd(int fd) {
   std::lock_guard lock(_mutex);
   const auto it =

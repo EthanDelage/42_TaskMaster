@@ -1,12 +1,38 @@
 #include "server/ProcessGroup.hpp"
 #include "common/Logger.hpp"
-#include <iostream>
 
-ProcessGroup::ProcessGroup(process_config_t &&config) {
+#include <cstring>
+#include <fcntl.h>
+#include <iostream>
+#include <unistd.h>
+
+ProcessGroup::ProcessGroup(process_config_t &&config)
+    : _stdout_fd(-1), _stderr_fd(-1) {
   _config = std::make_shared<process_config_t>(std::move(config));
-  for (size_t i = 0; i < _config->numprocs; ++i) {
-    _process_vector.emplace_back(_config);
+  _stdout_fd =
+      _config->stdout.empty()
+          ? open("/dev/null", O_WRONLY)
+          : open(_config->stdout.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (_stdout_fd == -1) {
+    throw std::runtime_error(std::string("open `") + _config->stdout +
+                             "`: " + strerror(errno));
   }
+  _stderr_fd =
+      _config->stderr.empty()
+          ? open("/dev/null", O_WRONLY)
+          : open(_config->stderr.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (_stderr_fd == -1) {
+    throw std::runtime_error(std::string("open `") + _config->stderr +
+                             "`: " + strerror(errno));
+  }
+  for (size_t i = 0; i < _config->numprocs; ++i) {
+    _process_vector.emplace_back(_config, _stdout_fd, _stderr_fd);
+  }
+}
+
+ProcessGroup::~ProcessGroup() {
+  close(_stdout_fd);
+  close(_stderr_fd);
 }
 
 process_config_t const &ProcessGroup::get_process_config() const {

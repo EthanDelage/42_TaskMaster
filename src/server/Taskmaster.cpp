@@ -91,7 +91,7 @@ void Taskmaster::handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot) {
                                  " revents=" + std::to_string(poll_fd.revents));
     switch (fd_type) {
     case PollFds::FdType::Process:
-      handle_process_output(poll_fd.fd);
+      handle_process_output(poll_fd, stale);
       break;
     case PollFds::FdType::Client:
       handle_client_command(poll_fd);
@@ -104,7 +104,6 @@ void Taskmaster::handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot) {
       break;
     }
   }
-  _poll_fds.remove_stale_poll_fd();
 }
 
 void Taskmaster::handle_client_command(const pollfd &poll_fd) {
@@ -144,15 +143,25 @@ void Taskmaster::handle_wake_up(int fd) {
   Socket::read(fd, buffer, SOCKET_BUFFER_SIZE);
 }
 
-void Taskmaster::handle_process_output(int fd) {
-  for (auto &[name, processes] : _process_pool) {
-    for (auto &process : processes) {
-      if (fd == process.get_stdout_pipe()[PIPE_READ]) {
-        process.read_stdout();
-      } else if (fd == process.get_stderr_pipe()[PIPE_READ]) {
-        process.read_stderr();
+void Taskmaster::handle_process_output(const pollfd &poll_fd, bool stale) {
+  ssize_t ret = 0;
+  if ((poll_fd.revents & POLLIN) != 0) {
+    std::lock_guard lock(_process_pool.get_mutex());
+    for (auto &[name, processes] : _process_pool) {
+      for (auto &process : processes) {
+        if (poll_fd.fd == process.get_stdout_pipe()[PIPE_READ]) {
+          ret = process.read_stdout();
+        } else if (poll_fd.fd == process.get_stderr_pipe()[PIPE_READ]) {
+          ret = process.read_stderr();
+        }
       }
     }
+  }
+  if (stale && ret <= 0) {
+    Logger::get_instance().warn(__func__ + std::string(" closing poll_fd=") +
+                                std::to_string(poll_fd.fd));
+    close(poll_fd.fd);
+    _poll_fds.remove_poll_fd(poll_fd.fd);
   }
 }
 int32_t Taskmaster::reload_config() {

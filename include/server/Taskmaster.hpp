@@ -35,7 +35,7 @@ private:
   void handle_client_command(const pollfd &poll_fd);
   void handle_connection();
   void handle_wake_up(int fd);
-  void handle_process_output(int fd);
+  void handle_process_output(const pollfd &poll_fd, bool stale);
   int32_t reload_config();
   void disconnect_client(int fd);
   void request_command(const std::vector<std::string> &args,

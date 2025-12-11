@@ -76,11 +76,13 @@ void Logger::log(Level level, const std::string &message) {
     throw std::runtime_error("Logger::log(): Failed to write to file");
   }
   if (level == Level::Error) {
-    std::cerr << log_level_to_color(level) << log_line_ss.str() << COLOR_RESET << std::flush;
+    std::cerr << log_level_to_color(level) << log_line_ss.str() << COLOR_RESET
+              << std::flush;
   }
 #ifdef LOG_TO_STDOUT
   else {
-    std::cout << log_level_to_color(level) << log_line_ss.str() << COLOR_RESET << std::flush;
+    std::cout << log_level_to_color(level) << log_line_ss.str() << COLOR_RESET
+              << std::flush;
   }
 #endif
 }
