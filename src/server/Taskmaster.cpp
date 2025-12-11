@@ -38,12 +38,27 @@ Taskmaster::Taskmaster(const ConfigParser &config)
                         {PollFds::FdType::WakeUp, false});
 }
 
+Taskmaster::~Taskmaster() {
+  _running = false;
+  if (_worker_thread.joinable()) {
+    _worker_thread.join();
+  } else {
+    Logger::get_instance().error(
+        "Worker thread is not joinable which is a bit weird");
+  }
+}
+
 void Taskmaster::loop() {
-  _task_manager.start();
   set_sighup_handler();
   if (_server_socket.listen(BACKLOG) == -1) {
     return;
   }
+  _worker_thread = std::thread(&Taskmaster::work, this);
+  _task_manager.start();
+  _running = false;
+}
+
+void Taskmaster::work() {
   while (_running) {
     PollFds::snapshot_t poll_fds_snapshot = _poll_fds.get_snapshot();
     int result = poll(poll_fds_snapshot.poll_fds.data(),
@@ -54,11 +69,6 @@ void Taskmaster::loop() {
         throw std::runtime_error("poll()");
       }
       continue;
-    }
-    if (!_task_manager.is_thread_alive()) {
-      Logger::get_instance().warn(
-          "Taskmaster::loop(): TaskManager thread is no longer active");
-      return;
     }
     handle_poll_fds(poll_fds_snapshot);
     if (sighup_received_g) {

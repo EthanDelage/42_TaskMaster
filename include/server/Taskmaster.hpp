@@ -17,6 +17,7 @@
 class Taskmaster {
 public:
   explicit Taskmaster(const ConfigParser &config);
+  ~Taskmaster();
   void loop();
 
 private:
@@ -29,8 +30,10 @@ private:
   ClientSession *_current_client{};
   UnixSocketServer _server_socket;
   TaskManager _task_manager;
-  bool _running;
+  std::atomic<bool> _running;
+  std::thread _worker_thread;
 
+  void work();
   void handle_poll_fds(const PollFds::snapshot_t &poll_fds_snapshot);
   void handle_client_command(const pollfd &poll_fd);
   void handle_connection();

@@ -17,13 +17,11 @@ public:
 
   void start();
   void stop();
-  bool is_thread_alive() const;
 
   void set_wake_up_fd(int wake_up_fd);
 
 private:
   ProcessPool &_process_pool;
-  std::thread _worker_thread;
   std::atomic<bool> _stop_token;
   PollFds &_poll_fds;
   int _wake_up_fd;

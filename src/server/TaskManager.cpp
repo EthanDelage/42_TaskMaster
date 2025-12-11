@@ -14,15 +14,7 @@ TaskManager::TaskManager(ProcessPool &process_pool, PollFds &poll_fds)
       _poll_fds(poll_fds),
       _wake_up_fd(-1) {}
 
-TaskManager::~TaskManager() {
-  _stop_token = true;
-  if (_worker_thread.joinable()) {
-    _worker_thread.join();
-  } else {
-    Logger::get_instance().error(
-        "Worker thread is not joinable which is a bit weird");
-  }
-}
+TaskManager::~TaskManager() { _stop_token = true; }
 
 void TaskManager::start() {
   Logger::get_instance().debug("Starting TaskManager");
@@ -30,12 +22,10 @@ void TaskManager::start() {
     throw std::runtime_error("TaskManager::start: wake up fd not set");
   }
   _stop_token = false;
-  _worker_thread = std::thread(&TaskManager::work, this);
+  work();
 }
 
 void TaskManager::stop() { _stop_token = true; }
-
-bool TaskManager::is_thread_alive() const { return (!_stop_token); }
 
 void TaskManager::set_wake_up_fd(int wake_up_fd) { _wake_up_fd = wake_up_fd; }
 
