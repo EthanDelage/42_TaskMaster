@@ -1,0 +1,20 @@
+process:
+  sigusr1:
+    cmd: "./test/bin/stopsignal"
+    stdout: test/out/stopsignal_sigusr1.out
+    stoptime: 5
+    stopsignal: USR1
+  sigusr2:
+    cmd: "./test/bin/stopsignal"
+    stdout: test/out/stopsignal_sigusr2.out
+    stopsignal: USR2
+# Uncomment this to test parsing
+#  stopsignal_bad:
+#    cmd: "echo test"
+#    stopsignal: test
+#  stoptime_bad:
+#    cmd: "echo test"
+#    stoptime: -1
+#  stoptime_bad2:
+#    cmd: "echo test"
+#    stoptime: 0
