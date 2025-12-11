@@ -34,7 +34,6 @@ Process::Process(std::shared_ptr<const process_config_t> process_config,
       _stdout_fd(stdout_fd),
       _stderr_fd(stderr_fd) {}
 
-
 void Process::start() {
   Logger::get_instance().info(str() + ": Starting...");
   if (pipe(_stdout_pipe) == -1) {
