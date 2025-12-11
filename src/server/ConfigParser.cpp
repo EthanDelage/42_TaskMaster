@@ -83,8 +83,6 @@ static process_config_t parse_process_config(std::string &&name,
   process_config_t process_config;
 
   process_config.name = name;
-  process_config.cmd =
-      std::unique_ptr<wordexp_t, WordexpDestructor>(new wordexp_t);
   parse_cmd(config_node, process_config);
   parse_cmd_path(process_config);
   parse_workingdir(config_node, process_config);
@@ -108,18 +106,15 @@ static void parse_cmd(const YAML::Node &config_node,
   if (!config_node["cmd"]) {
     throw std::runtime_error("ProgramConfig: Missing required 'cmd' field");
   }
-  if (wordexp(config_node["cmd"].as<std::string>().c_str(),
-              process_config.cmd.get(), 0) != 0) {
-    throw std::runtime_error("ProgramConfig: Failed to parse 'cmd' field");
-  }
+  process_config.cmd = split(config_node["cmd"].as<std::string>(), ' ');
 }
 
 static void parse_cmd_path(process_config_t &process_config) {
-  if (process_config.cmd->we_wordc < 1) {
+  if (process_config.cmd.empty()) {
     process_config.cmd_path = "";
     return;
   }
-  std::string cmd(process_config.cmd->we_wordv[0]);
+  std::string cmd(process_config.cmd[0]);
   if (cmd.find('/') != std::string::npos) {
     process_config.cmd_path = cmd;
     return;
@@ -314,11 +309,4 @@ static bool is_file_writeable(std::string path) {
 
 static bool is_directory(std::string path) {
   return std::filesystem::is_directory(path);
-}
-
-void WordexpDestructor::operator()(wordexp_t *p) const {
-  if (p) {
-    wordfree(p);
-    delete p;
-  }
 }

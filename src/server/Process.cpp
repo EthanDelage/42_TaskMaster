@@ -58,12 +58,21 @@ void Process::start() {
     Logger::get_instance().info(str() + ": Started");
     return;
   }
+  std::vector<char*> cstrs;
+  cstrs.reserve(_process_config->cmd.size());
+
+  for (auto& s : _process_config->cmd) {
+    cstrs.push_back(const_cast<char*>(s.c_str()));
+    Logger::get_instance().error(std::string("arg: ") + s.c_str());
+  }
+  cstrs.push_back(nullptr);
   close(_stdout_pipe[PIPE_READ]);
   close(_stderr_pipe[PIPE_READ]);
   close(_stdout_fd);
   close(_stderr_fd);
   setup();
-  execve(_process_config->cmd_path.c_str(), _process_config->cmd->we_wordv,
+
+  execve(_process_config->cmd_path.c_str(), cstrs.data(),
          environ);
   std::exit(errno);
 }
@@ -265,6 +274,7 @@ void Process::setup() {
 
 void Process::setup_env() const {
   for (std::pair<std::string, std::string> env : _process_config->env) {
+    Logger::get_instance().error("setenv: " + env.first + "=" + env.second);
     setenv(env.first.c_str(), env.second.c_str(), 1);
   }
 }

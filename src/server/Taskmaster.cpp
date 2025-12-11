@@ -344,15 +344,7 @@ Taskmaster::get_commands_callback() {
 
 static bool compare_config(const process_config_t &left,
                            const process_config_t &right) {
-  if (left.cmd->we_wordc != right.cmd->we_wordc) {
-    return false;
-  }
-  for (size_t i = 0; i < left.cmd->we_wordc; i++) {
-    if (strcmp(left.cmd->we_wordv[i], right.cmd->we_wordv[i]) != 0) {
-      return false;
-    }
-  }
-  return left.name == right.name && left.cmd_path == right.cmd_path &&
+  return left.name == right.name && left.cmd == right.cmd && left.cmd_path == right.cmd_path &&
          left.workingdir == right.workingdir && left.stdout == right.stdout &&
          left.stderr == right.stderr && left.stopsignal == right.stopsignal &&
          left.numprocs == right.numprocs && left.starttime == right.starttime &&

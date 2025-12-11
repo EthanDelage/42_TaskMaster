@@ -11,13 +11,9 @@ extern "C" {
 
 enum class AutoRestart { True, False, Unexpected };
 
-struct WordexpDestructor {
-  void operator()(wordexp_t *p) const;
-};
-
 typedef struct {
   std::string name;
-  std::unique_ptr<wordexp_t, WordexpDestructor> cmd;
+  std::vector<std::string> cmd;
   std::string cmd_path;
   std::string workingdir;
   std::string stdout;
