@@ -87,6 +87,8 @@ static int daemon_start(const char *daemon_user) {
     return -1;
   }
 
+  dprintf(pidfd, "%d\n", getpid());
+
   if (setgid(gid) < 0) {
     Logger::get_instance().error(std::string("daemon_start: setgid: ") +
                                  strerror(errno));
@@ -164,8 +166,6 @@ static int create_pidfile(uid_t uid, gid_t gid) {
     close(fd);
     return -1;
   }
-
-  dprintf(fd, "%d\n", getpid());
 
   if (fchown(fd, uid, gid) < 0) {
     Logger::get_instance().error(std::string("create_pidfile: fchown: ") +
