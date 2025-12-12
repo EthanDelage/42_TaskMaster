@@ -40,6 +40,10 @@ void ProcessPool::move_from(ProcessPool &other, std::string const &key) {
   _process_pool.insert(std::move(node));
 }
 
+bool ProcessPool::empty() const {
+  return _process_pool.empty();
+}
+
 std::mutex &ProcessPool::get_mutex() { return _mutex; }
 
 std::unordered_map<std::string, ProcessGroup> &ProcessPool::get_pool() {
@@ -67,6 +71,9 @@ ProcessPool::ConstPoolIterator ProcessPool::cend() const {
 }
 
 std::ostream &operator<<(std::ostream &os, const ProcessPool &process_pool) {
+  if (process_pool.empty()) {
+    return os << "No process found" << std::endl;
+  }
   for (auto &[name, process_group] : process_pool) {
     os << process_group;
   }
