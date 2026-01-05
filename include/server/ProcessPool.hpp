@@ -21,6 +21,7 @@ public:
   PoolIterator find(std::string const &key);
   PoolType::node_type extract(std::string const &key);
   void move_from(ProcessPool &other, std::string const &key);
+  bool empty() const;
 
   std::unordered_map<std::string, ProcessGroup> &get_pool();
   std::mutex &get_mutex();
