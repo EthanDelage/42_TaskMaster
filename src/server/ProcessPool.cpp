@@ -40,9 +40,7 @@ void ProcessPool::move_from(ProcessPool &other, std::string const &key) {
   _process_pool.insert(std::move(node));
 }
 
-bool ProcessPool::empty() const {
-  return _process_pool.empty();
-}
+bool ProcessPool::empty() const { return _process_pool.empty(); }
 
 std::mutex &ProcessPool::get_mutex() { return _mutex; }
 
