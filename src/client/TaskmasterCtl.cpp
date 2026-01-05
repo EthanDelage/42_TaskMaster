@@ -7,6 +7,7 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 #include <sstream>
+#include <sys/poll.h>
 #include <unistd.h>
 
 volatile sig_atomic_t sigint_received_g = 0;
@@ -84,7 +85,7 @@ void TaskmasterCtl::attach(const std::vector<std::string> &args) {
   send_command(args);
   set_sigint_handler();
   while (sigint_received_g == 0) {
-    receive_response(false);
+    receive_response();
   }
   send_and_receive({CMD_DETACH_STR, args[1]});
   reset_sigint_handler();
@@ -122,23 +123,33 @@ void TaskmasterCtl::print_header() {
                "programs.\n\n";
 }
 
-void TaskmasterCtl::receive_response(bool log_to_logfile) const {
+void TaskmasterCtl::receive_response() const {
   char buffer[SOCKET_BUFFER_SIZE];
+  pollfd poll_fd = {_socket.get_fd(), POLLIN, 0};
+  int timeout = 3000;
   ssize_t ret;
 
-  ret = _socket.read(buffer, sizeof(buffer));
-  if (ret == -1) {
-    if (errno != EINTR) {
-      Logger::get_instance().error(std::string("Failed to read response: ") +
-                                   strerror(errno));
+  while (true) {
+    int poll_ret = poll(&poll_fd, 1, timeout);
+    Logger::get_instance().debug("Poll returned " + std::to_string(poll_ret));
+    if (poll_ret <= 0) {
+      return;
     }
-    return;
+    Logger::get_instance().debug("Revents= " + std::to_string(poll_fd.revents));
+    if ((poll_fd.revents & POLLIN) != 0) {
+      ret = _socket.read(buffer, SOCKET_BUFFER_SIZE);
+      Logger::get_instance().debug("read= " + std::to_string(ret));
+      if (ret == -1) {
+        if (errno != EINTR) {
+          Logger::get_instance().error(
+              std::string("Failed to read response: ") + strerror(errno));
+        }
+        return;
+      }
+      std::cout << std::string(buffer, ret);
+    }
+    timeout = 0;
   }
-  if (log_to_logfile == true) {
-    Logger::get_instance().info("response received: " +
-                                std::string(buffer, ret));
-  }
-  std::cout << std::string(buffer, ret);
 }
 
 size_t TaskmasterCtl::get_usage_max_len() const {
